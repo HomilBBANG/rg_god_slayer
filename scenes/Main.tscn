@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/TestCourtyard.tscn" id="2_courtyard"]
@@ -6,6 +6,8 @@
 [ext_resource type="PackedScene" path="res://scenes/HitDummy.tscn" id="4_dummy"]
 [ext_resource type="PackedScene" path="res://scenes/CameraRig.tscn" id="5_rig"]
 [ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="6_hud"]
+[ext_resource type="Script" path="res://scripts/light_shafts.gd" id="7_shafts"]
+[ext_resource type="Script" path="res://scripts/grass_field.gd" id="8_grass"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -70,6 +72,12 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 60.0
 
 [node name="TestCourtyard" parent="World" instance=ExtResource("2_courtyard")]
+
+[node name="GrassField" type="MultiMeshInstance3D" parent="World"]
+script = ExtResource("8_grass")
+
+[node name="LightShafts" type="Node3D" parent="World"]
+script = ExtResource("7_shafts")
 
 [node name="Player" parent="World" instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)

@@ -91,6 +91,13 @@ debug_screenshot={
 
 common/physics_ticks_per_second=60
 
+[shader_globals]
+
+cloud_noise={
+"type": "sampler2D",
+"value": "res://assets/environment/cloud_noise.tres"
+}
+
 [rendering]
 
 lights_and_shadows/directional_shadow/size=2048

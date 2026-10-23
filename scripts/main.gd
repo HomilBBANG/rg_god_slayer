@@ -9,6 +9,7 @@ extends Node
 @onready var sun: DirectionalLight3D = $World/DirectionalLight3D
 @onready var player: PlayerController = $World/Player
 @onready var camera_rig: CameraFollow = $World/CameraRig
+@onready var light_shafts: LightShafts = $World/LightShafts
 
 ## F2로 순환하는 태양 프리셋: [고도각(도), 화면 기준 방위각(도, 0=화면 오른쪽, 90=화면 위), 에너지].
 ## 쿼터뷰에서 카메라에 보이는 면은 +X/+Z 면이므로, 태양을 화면 '오른쪽(약간 위)'에 두면
@@ -61,6 +62,7 @@ func _apply_light_preset(i: int) -> void:
 	var sun_from: Vector3 = (camera_rig.screen_right() * cos(az) + camera_rig.screen_up() * sin(az)) * cos(el) + Vector3.UP * sin(el)
 	sun.global_transform.basis = Basis.looking_at(-sun_from.normalized(), Vector3.UP)
 	sun.light_energy = preset[2]
+	light_shafts.rebuild(-sun.global_transform.basis.z, -camera_rig.camera.global_transform.basis.z)
 	print("[RED] light preset %d: elev=%.0f° screen_az=%.0f° energy=%.2f  dir=%s" % [i, preset[0], preset[1], preset[2], -sun.global_transform.basis.z])
 
 

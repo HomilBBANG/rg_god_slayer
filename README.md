@@ -83,22 +83,35 @@ game/
 1. `Main/World` SubViewport 가 `(1920/scale + 4) × (1080/scale + 4)` 로 3D 를 렌더 (MSAA/AA 없음, 하드 섀도).
 2. `PixelScreen` TextureRect 가 그 텍스처를 nearest 필터로 정수 배율 확대. 바깥 2텍셀 여유는 화면 밖에 있다.
 3. `camera_follow.gd` 가 매 프레임 카메라 위치를 화면 right/up 축에서 텍셀 단위로 내림 → 월드가 텍셀 격자에 고정되어 "픽셀 크리핑" 이 없다. 남은 서브텍셀 잔량 × scale 만큼 `PixelScreen` 을 반대로 밀어 스크롤은 부드럽다.
-4. `RED_PixelEdge.gdshader` (카메라 자식 풀스크린 쿼드): 이웃 4텍셀의 선형 깊이가 `depth_threshold` 이상 멀면 실루엣 → 색 × `edge_darken`; 같은 깊이에서 노멀이 `normal_threshold` 이상 꺾이고 내 면이 더 위를 향하면 + `edge_lighten`. 항상 1텍셀, 볼록 에지만.
+4. `RED_PixelEdge.gdshader` (카메라 자식 풀스크린 쿼드): 이웃 4텍셀의 선형 깊이가 `depth_threshold` 이상 멀면 실루엣; 같은 깊이에서 노멀이 `normal_threshold` 이상 꺾이고 내 면이 더 위를 향하면 면 분리 선. 항상 1텍셀, 볼록 에지만. 비스듬한 면은 `depth_angle_scale` 로 임계값을 키워 가짜 에지를 막고(Roystan), **조명과 통합** — 픽셀 휘도가 높으면(빛 받는 면) 선을 밝게, 낮으면(그림자) 더 어둡게 그린다.
+5. 구름 그림자: `[shader_globals] cloud_noise` (NoiseTexture2D, seamless) 를 월드 XZ 에 투영해 방향광 감쇠에 곱한다 (`RED_bands.gdshaderinc::get_cloud_attenuation`). `cloud_wind` 로 흐른다.
+6. 잔디: `GrassField` (MultiMesh, 드로우콜 1) + `RED_Grass.gdshader` — Y축 빌보드, 알파 시저 텍스처, `LIGHT_VERTEX` 를 밑동으로 두어 쿼드 전체가 지면과 같은 조명/그림자 밴드를 받는다.
+7. 볼류메트릭(갓레이): `LightShafts` 가 빛 방향을 품은 평행 평면 12장을 카메라 쪽으로 세워 겹치고, `RED_LightShaft.gdshader` 가 각 평면에서 방향광 섀도 `ATTENUATION` 이 1인 곳만 가산(blend_add). 지면/물체 근처는 깊이 페이드, 높이 페이드. 태양 프리셋이 바뀌면 `rebuild()`.
 
 | PixelEdge uniform | 기본값 |
 |---|---:|
 | `depth_threshold` | 0.22 m |
+| `depth_angle_scale` | 3.0 |
 | `edge_darken` | 0.55 (1=끔) |
 | `normal_threshold` | 0.35 |
 | `edge_lighten` | 0.12 (0=끔) |
+| `edge_shadow_darken` | 0.8 |
 | `highlight_up_bias` | 0.15 |
+| `lit_luma_low / high` | 0.16 / 0.30 |
+
+| LightShaft uniform | 기본값 |
+|---|---:|
+| `intensity` | 0.032 |
+| `fade_height_start / end` | 1.0 / 7.5 m |
+| `depth_fade` | 1.2 m |
+| `plane_count / spacing` (노드) | 12 / 1.6 m |
 
 GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.0 으로 두면 에지 없이 색면만 남습니다.
 
 ## 셰이더 `RED_FlatLit.gdshader`
 
 `shader_type spatial`, `render_mode cull_back, depth_draw_opaque, specular_disabled, ambient_light_disabled`.
-`fragment()` 가 `ALBEDO = base_color` 와 dark 밴드용 기본 어둠(EMISSION)을 깔고, `light()` 가 `dot(NORMAL, LIGHT) × ATTENUATION` 을 3단계로 양자화해 `DIFFUSE_LIGHT` 에 누적합니다. 방향광 그림자는 `ATTENUATION` 으로 들어오므로 그림자 = dark 밴드입니다.
+`fragment()` 가 `ALBEDO = base_color` 와 dark 밴드용 기본 어둠(EMISSION)을 깔고, `light()` 가 `dot(NORMAL, LIGHT) × ATTENUATION` 을 3단계로 양자화해 `DIFFUSE_LIGHT` 에 누적합니다 (Godot 4 는 `light()` 뒤에 ALBEDO 를 곱하므로 `light()` 안에서는 곱하지 않음). 방향광 그림자는 `ATTENUATION` 으로 들어오므로 그림자 = dark 밴드. 밴드/구름/감쇠 스무딩 코드는 `RED_bands.gdshaderinc` 에 있고 `RED_Grass` 와 공유합니다.
 
 | uniform | 기본값 | 의미 |
 |---|---:|---|
@@ -110,6 +123,9 @@ GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.
 | `threshold_high` | 0.70 | mid→light 경계 |
 | `edge_softness` | 0.04 | 밴드 경계 smoothstep 폭 |
 | `local_light_strength` | 0.25 | Omni/Spot 기여 제한 |
+| `shadow_smooth` | 0.25 | 방향광 그림자 감쇠 smoothstep 폭 |
+| `cloud_scale / wind / strength` | 0.011 / (0.6, 0.25) / 0.38 | 구름 그림자 |
+| `cloud_cover_low / high` | 0.48 / 0.62 | 노이즈 → 구름 임계 |
 | `shadow_tint` | #33434A | dark 밴드에 섞는 청회색 |
 | `shadow_tint_strength` | 0.55 | 청회색 비율 |
 

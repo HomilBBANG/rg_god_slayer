@@ -16,6 +16,10 @@ func _initialize() -> void:
 	current_scene = _main
 	_player = _main.get_node("World/Player")
 	print("[runner] main scene loaded")
+	if OS.get_environment("RED_QUICK") != "":
+		_step = 20
+		print("[runner] quick mode")
+
 
 func _process(_delta: float) -> bool:
 	_frames += 1
@@ -139,6 +143,20 @@ func _process(_delta: float) -> bool:
 				print("[runner] dodge-left: pos=%s facing=%s (expect x<0,z>0 ; facing ≈ (-0.71,0,0.71))" % [p, _player.facing])
 				_step = 20
 		20:
+			# 볼류메트릭/잔디 끈 비교 캡처
+			_player.global_position = Vector3(-6.0, 0.3, 4.0)
+			_player.velocity = Vector3.ZERO
+			_main.get_node("World/LightShafts").visible = false
+			_main.get_node("World/GrassField").visible = false
+			_step = 21; _frames_attack = _frames
+		21:
+			if _frames - _frames_attack == 12:
+				_cap("11_no_shafts_no_grass.png")
+				_main.get_node("World/LightShafts").visible = true
+				_main.get_node("World/GrassField").visible = true
+			if _frames - _frames_attack == 24:
+				_cap("12_shafts_grass.png"); _step = 22
+		22:
 			print("[runner] done, frames=%d" % _frames)
 			quit(0)
 			return true
