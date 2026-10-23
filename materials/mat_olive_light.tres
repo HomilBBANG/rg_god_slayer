@@ -5,6 +5,6 @@
 [resource]
 render_priority = 0
 shader = ExtResource("1_shader")
-shader_parameter/base_color = Color(0.58, 0.79, 0.44, 1)
-shader_parameter/shadow_tint = Color(0.2, 0.26, 0.29, 1)
+shader_parameter/base_color = Color(0.52, 0.55, 0.41, 1)
+shader_parameter/shadow_tint = Color(0.16, 0.18, 0.24, 1)
 shader_parameter/shadow_tint_strength = 0.55

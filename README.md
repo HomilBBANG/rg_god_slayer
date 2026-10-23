@@ -43,7 +43,7 @@ game/
 ├─ project.godot
 ├─ scenes/
 │  ├─ Main.tscn            # PixelScreen(TextureRect) ← World(SubViewport 644×364): 환경/광원/맵/플레이어/더미/카메라, HUD
-│  ├─ Player.tscn          # CharacterBody3D + 임시 로우폴리 신체 (박스 메시, 6등신 1.70 m)
+│  ├─ Player.tscn          # CharacterBody3D + Blender 로우폴리 모델 (player_red.glb, 6등신 1.70 m, 이목구비 없음)
 │  ├─ CameraRig.tscn       # Node3D + Camera3D (직교, 고정각)
 │  ├─ TestCourtyard.tscn   # 스크립트가 런타임에 프리미티브로 맵을 조립
 │  └─ HitDummy.tscn        # StaticBody3D, 그룹 attack_targets, receive_hit()
@@ -98,6 +98,8 @@ game/
 | `edge_shadow_darken` | 0.8 |
 | `highlight_up_bias` | 0.15 |
 | `lit_luma_low / high` | 0.16 / 0.30 |
+| `vignette_strength / start` | 0.38 / 0.45 |
+| `grain_strength / fps` | 0.035 / 12 |
 
 | LightShaft uniform | 기본값 |
 |---|---:|
@@ -135,7 +137,8 @@ GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.
 
 - `DirectionalLight3D` 1개, 그림자 ON (4096, soft filter medium), 색 `(0.98, 0.93, 0.80)`.
 - 태양 방향은 `main.gd` 의 `light_presets` 에서 **화면 기준** `[고도각, 방위각(0=화면 오른쪽, 90=화면 위), 에너지]` 로 정의하고 카메라 축을 이용해 월드 방향으로 변환합니다. 기본 = 48°, 10°: 인물/벽의 오른쪽 면이 밝고 그림자가 화면 왼쪽으로 떨어집니다.
-- `WorldEnvironment`: 단색 배경(저채도 청회), ambient 약함(셰이더가 `ambient_light_disabled` 라 색면에는 영향 없음), 톤매핑 Filmic, 채도 0.9. GI/SSGI/SSR/SSAO/Glow/DOF/Fog 전부 OFF.
+- `WorldEnvironment`: 단색 배경(어두운 청회), ambient 약함(셰이더가 `ambient_light_disabled` 라 색면에는 영향 없음), 톤매핑 Filmic, **채도 0.72 / 밝기 0.96** (코즈믹 호러풍 저채도). GI/SSGI/SSR/SSAO/Glow/DOF/Fog 전부 OFF. 비네트·필름 그레인은 `RED_PixelEdge` 에서.
+- 팔레트: 탁한 베이지 흙(#AE9E7D), 회올리브 풀밭(#8F8F6B), 회녹색 잎(#66755C), 한랭 그림자 틴트(#292E3D), 붉은 머리(#80474 2), 먹색 옷. 구름 그림자 0.5.
 - MSAA 2×.
 
 ## 플레이어 수치 (`player_controller.gd` export)
@@ -154,7 +157,8 @@ python3 tools/gen_textures.py                                      # 잎/풀/꽃
 
 | 에셋 | 구성 |
 |---|---|
-| `tree_a/b.glb` | 7각 테이퍼 줄기 + 뿌리혹, smooth-min 구 합집합 표면에 포아송 간격으로 뿌린 잎 카드 ~250장. **카드 노멀 = 캐노피 볼륨 노멀** → 덩어리 하나처럼 2~3톤 음영 |
+| `tree_a/b.glb` | 7각 테이퍼 줄기 + 뿌리혹, 위로 갈수록 작은 구를 쌓은 **원뿔형** 캐노피 표면에 포아송 간격으로 뿌린 **삼각형 잎 카드**(roll ±26° 로 끝이 위를 향함). **카드 노멀 = 캐노피 볼륨 노멀** → 덩어리 하나처럼 2~3톤 음영 |
+| `player_red.glb` | 주인공. 엠프티 계층 `Body/{HipL, HipR, Torso/{ShoulderL, ShoulderR}}` 아래에 부위 메시(와이드 팬츠 다리, 구두, 골반, 벨트+버클, 셔츠+칼라, 걷은 소매 커프, 맨 팔뚝, 손, 목, 머리, 머리카락 캡/앞머리/긴 뒷머리/옆머리). 이목구비 없음. Godot 이 같은 이름의 Node3D 계층으로 가져와 절차 애니메이션 피벗으로 쓴다. 정면 = Blender +Y = Godot −Z |
 | `rock_a~d.glb` | 노이즈 변위 이코스피어, 각도 제한 디졸브로 큰 면만, 플랫 셰이딩, 바닥 평평 |
 | `bush_a/b.glb` | 납작 둔덕(smooth) + 테두리 풀 카드(노멀 위) |
 | `pillar_a/b.glb`, `block_a/b.glb` | 꼭짓점을 안으로 깎은 돌 블록을 쌓은 폐허 기둥 / 흩어진 블록 |

@@ -29,6 +29,18 @@ uniform float highlight_up_bias : hint_range(0.0, 1.0) = 0.15;
 // 이 휘도보다 밝으면 '빛 받는 픽셀'
 uniform float lit_luma_low : hint_range(0.0, 1.0) = 0.16;
 uniform float lit_luma_high : hint_range(0.0, 1.0) = 0.30;
+// 분위기: 비네트(가장자리 어둡게) + 텍셀 단위 필름 그레인
+uniform float vignette_strength : hint_range(0.0, 1.0) = 0.38;
+uniform float vignette_start : hint_range(0.0, 1.0) = 0.45;
+uniform float grain_strength : hint_range(0.0, 0.2) = 0.035;
+uniform float grain_fps : hint_range(1.0, 60.0) = 12.0;
+
+
+float hash12(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
 
 
 void vertex() {
@@ -87,5 +99,15 @@ void fragment() {
 	// 실루엣: 밝은 면 가장자리는 덜, 어두운 면 가장자리는 더 어둡게
 	float dark = mix(edge_darken * 0.8, edge_darken + (1.0 - edge_darken) * 0.4, lit);
 	col *= mix(1.0, dark, depth_edge);
+
+	// 비네트: 화면 중심에서의 거리(종횡비 보정)
+	vec2 vc = (uv - 0.5) * vec2(VIEWPORT_SIZE.x / VIEWPORT_SIZE.y, 1.0) * 0.9;
+	float vd = length(vc);
+	col *= 1.0 - vignette_strength * smoothstep(vignette_start, 1.1, vd);
+	// 필름 그레인: 텍셀 격자에 맞춘 노이즈, grain_fps 로만 갱신
+	float tframe = floor(TIME * grain_fps);
+	vec2 texel = floor(uv * VIEWPORT_SIZE);
+	float g = hash12(texel + vec2(tframe * 13.7, tframe * 7.1)) - 0.5;
+	col += vec3(g * grain_strength);
 	ALBEDO = col;
 }

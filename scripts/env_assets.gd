@@ -34,6 +34,12 @@ const MATERIALS := {
 	"Stone": preload("res://materials/mat_stone_lit.tres"),
 	"Bush": preload("res://materials/mat_bush.tres"),
 	"GrassCard": preload("res://materials/mat_grasscard.tres"),
+	"Hair": preload("res://materials/mat_hair.tres"),
+	"Skin": preload("res://materials/mat_skin.tres"),
+	"Cloth": preload("res://materials/mat_cloth.tres"),
+	"Belt": preload("res://materials/mat_belt.tres"),
+	"Buckle": preload("res://materials/mat_buckle.tres"),
+	"Shoe": preload("res://materials/mat_shoe.tres"),
 }
 
 const LAYER_WORLD := 1
@@ -87,6 +93,11 @@ static func wall(parent: Node, n: String, length: float, pos: Vector3, yaw_deg: 
 		_apply_materials(inst)
 		x += seg_len
 	return body
+
+
+## glTF 머티리얼 이름으로 RED 머티리얼 치환 (외부에서도 사용: 플레이어 모델)
+static func apply_materials(node: Node) -> void:
+	_apply_materials(node)
 
 
 static func _apply_materials(node: Node) -> void:

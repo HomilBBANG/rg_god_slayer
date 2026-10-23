@@ -47,18 +47,21 @@ var _walk_phase: float = 0.0
 var _idle_phase: float = 0.0
 
 @onready var visual_root: Node3D = $VisualRoot
-@onready var _body: Node3D = $VisualRoot/Body
-@onready var _torso: Node3D = $VisualRoot/Body/Torso
-@onready var _hip_l: Node3D = $VisualRoot/Body/HipL
-@onready var _hip_r: Node3D = $VisualRoot/Body/HipR
-@onready var _shoulder_l: Node3D = $VisualRoot/Body/Torso/ShoulderL
-@onready var _shoulder_r: Node3D = $VisualRoot/Body/Torso/ShoulderR
+## Blender 모델(player_red.glb)의 엠프티 계층을 피벗으로 쓴다
+@onready var _model: Node3D = $VisualRoot/Model
+@onready var _body: Node3D = $VisualRoot/Model/Body
+@onready var _torso: Node3D = $VisualRoot/Model/Body/Torso
+@onready var _hip_l: Node3D = $VisualRoot/Model/Body/HipL
+@onready var _hip_r: Node3D = $VisualRoot/Model/Body/HipR
+@onready var _shoulder_l: Node3D = $VisualRoot/Model/Body/Torso/ShoulderL
+@onready var _shoulder_r: Node3D = $VisualRoot/Model/Body/Torso/ShoulderR
 
 var _camera_rig: CameraFollow
 
 
 func _ready() -> void:
 	floor_snap_length = 0.3
+	EnvAssets.apply_materials(_model)
 	_camera_rig = get_tree().get_first_node_in_group("camera_rig") as CameraFollow
 	_apply_facing(0.0, true)
 

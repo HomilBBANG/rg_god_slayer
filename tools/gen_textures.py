@@ -60,8 +60,31 @@ def flower(path, size=8):
     px[2, 5] = (120, 170, 90, 255)
     im.save(OUT + path)
 
-leaf_card("leaf_card.png", blobs=3)
-random.seed(5); leaf_card("leaf_card_b.png", blobs=3)
+def leaf_tri_card(path, size=32, tris=4):
+    """위로 뾰족한 삼각형 잎 뭉치. 가장자리 1px 약간 어둡게."""
+    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mask = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(mask)
+    for i in range(tris):
+        w = random.uniform(size * 0.30, size * 0.46)
+        h = random.uniform(size * 0.55, size * 0.85)
+        cx = size * 0.5 + random.uniform(-size * 0.16, size * 0.16)
+        base_y = size * 0.5 + h * 0.5 + random.uniform(-size * 0.08, size * 0.08)
+        lean = random.uniform(-size * 0.08, size * 0.08)
+        d.polygon([(cx + lean, base_y - h), (cx - w * 0.5, base_y), (cx + w * 0.5, base_y)], fill=255)
+    px = im.load(); mp = mask.load()
+    for y in range(size):
+        for x in range(size):
+            if mp[x, y] == 0:
+                continue
+            edge = any(not (0 <= x + dx < size and 0 <= y + dy < size) or mp[x + dx, y + dy] == 0
+                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            c = 228 if edge else 255
+            px[x, y] = (c, c, c, 255)
+    im.save(OUT + path)
+
+random.seed(3); leaf_tri_card("leaf_card.png")
+random.seed(8); leaf_tri_card("leaf_card_b.png", tris=3)
 random.seed(21); grass_card("grass_card.png")
 flower("flower.png")
 print("textures written")

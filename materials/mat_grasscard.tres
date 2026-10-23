@@ -5,5 +5,5 @@
 
 [resource]
 shader = ExtResource("1_shader")
-shader_parameter/base_color = Color(0.60, 0.80, 0.42, 1)
+shader_parameter/base_color = Color(0.44, 0.50, 0.36, 1)
 shader_parameter/card_tex = ExtResource("2_tex")

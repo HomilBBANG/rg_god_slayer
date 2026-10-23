@@ -12,9 +12,9 @@
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
-background_color = Color(0.36, 0.52, 0.40, 1)
+background_color = Color(0.20, 0.23, 0.26, 1)
 ambient_light_source = 1
-ambient_light_color = Color(0.45, 0.53, 0.58, 1)
+ambient_light_color = Color(0.40, 0.44, 0.52, 1)
 ambient_light_energy = 0.35
 tonemap_mode = 2
 tonemap_white = 4.0
@@ -25,9 +25,9 @@ sdfgi_enabled = false
 glow_enabled = false
 fog_enabled = false
 adjustment_enabled = true
-adjustment_brightness = 1.0
+adjustment_brightness = 0.96
 adjustment_contrast = 1.0
-adjustment_saturation = 1.08
+adjustment_saturation = 0.72
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributes_main"]
 dof_blur_far_enabled = false
@@ -64,7 +64,7 @@ camera_attributes = SubResource("CameraAttributes_main")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="World"]
 transform = Transform3D(0.819152, 0.383022, -0.426552, 0, 0.743145, 0.66913, 0.573576, -0.548125, 0.608762, 0, 12, 0)
-light_color = Color(0.98, 0.93, 0.8, 1)
+light_color = Color(0.93, 0.88, 0.76, 1)
 light_energy = 1.0
 shadow_enabled = true
 shadow_bias = 0.04
@@ -77,17 +77,17 @@ directional_shadow_max_distance = 60.0
 [node name="GrassField" type="MultiMeshInstance3D" parent="World"]
 script = ExtResource("8_grass")
 patches = [[Rect2(-17, -1.5, 9, 11), 1.4], [Rect2(-4, 7.5, 14, 6), 1.4], [Rect2(-17, -13, 34, 26), 0.35]]
-base_color = Color(0.62, 0.82, 0.46, 1)
+base_color = Color(0.50, 0.55, 0.40, 1)
 exclude_rects = [Rect2(-3.6, -3.6, 7.2, 7.2), Rect2(7, -2.6, 9, 5.2), Rect2(-14, -11, 8, 7), Rect2(8, -13, 10, 8), Rect2(-2, -11, 4, 8)]
 
 [node name="FlowerField" type="MultiMeshInstance3D" parent="World"]
 script = ExtResource("8_grass")
-patches = [[Rect2(-17, -1.5, 9, 11), 0.18], [Rect2(-4, 7.5, 14, 6), 0.18], [Rect2(-17, -13, 34, 26), 0.03]]
+patches = [[Rect2(-17, -1.5, 9, 11), 0.08], [Rect2(-4, 7.5, 14, 6), 0.08], [Rect2(-17, -13, 34, 26), 0.015]]
 seed_value = 99
 texture = ExtResource("9_flower")
 tuft_size = Vector2(0.28, 0.28)
 size_jitter = 0.2
-base_color = Color(0.95, 0.9, 1.0, 1)
+base_color = Color(0.72, 0.70, 0.76, 1)
 sway = 0.015
 exclude_rects = [Rect2(-3.6, -3.6, 7.2, 7.2), Rect2(7, -2.6, 9, 5.2), Rect2(-14, -11, 8, 7), Rect2(8, -13, 10, 8)]
 

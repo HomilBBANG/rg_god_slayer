@@ -67,10 +67,10 @@ def card_basis(roll, tilt):
     return (rot @ right).normalized(), (rot @ up).normalized()
 
 
-def add_cards(verts, faces, uvs, normals, center, size, normal, roll=None, tilt=0.35, aspect=1.0):
+def add_cards(verts, faces, uvs, normals, center, size, normal, roll=None, tilt=0.35, aspect=1.0, roll_range=math.pi):
     """center 에 size 크기의 카메라향 쿼드 1장 추가. normal = 조명용 커스텀 노멀."""
     if roll is None:
-        roll = random.uniform(-math.pi, math.pi)
+        roll = random.uniform(-roll_range, roll_range)
     r, u = card_basis(roll, random.uniform(-tilt, tilt))
     hw, hh = size * 0.5, size * 0.5 * aspect
     i = len(verts)
@@ -129,7 +129,7 @@ def canopy_normal(p, spheres):
     return n.normalized() if n.length > 1e-6 else Vector((0, 0, 1))
 
 
-def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.95, 1.3), shell=(-0.55, 0.05), min_dist=0.5, inner=70):
+def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.95, 1.3), shell=(-0.55, 0.05), min_dist=0.5, inner=70, roll_range=0.45):
     random.seed(seed)
     # 줄기: 7각 테이퍼 실린더, 살짝 기울임
     bm = bmesh.new()
@@ -156,29 +156,31 @@ def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.95, 1.3), shell
 
     # 잎 카드
     if spheres is None:
-        top = height + 1.9
+        # 원뿔형: 위로 갈수록 작은 구를 쌓아 뾰족한 실루엣 (삼각형 카드와 어울림)
+        top = height + 1.5
         spheres = [
-            (Vector((0.0, 0.0, top)), 1.9),
-            (Vector((0.75, 0.3, top + 0.4)), 1.35),
-            (Vector((-0.65, -0.35, top + 0.3)), 1.3),
-            (Vector((0.15, -0.55, top + 1.05)), 1.05),
-            (Vector((-0.2, 0.6, top - 0.5)), 1.1),
+            (Vector((0.0, 0.0, top)), 1.7),
+            (Vector((0.55, 0.25, top - 0.2)), 1.25),
+            (Vector((-0.6, -0.3, top - 0.1)), 1.2),
+            (Vector((0.1, 0.0, top + 1.3)), 1.15),
+            (Vector((-0.1, 0.1, top + 2.4)), 0.75),
+            (Vector((0.0, 0.0, top + 3.1)), 0.4),
         ]
     verts, faces, uvs, normals = [], [], [], []
     cand = []
     for _ in range(9000):
-        p = Vector((random.uniform(-3.4, 3.4), random.uniform(-3.4, 3.4), random.uniform(height - 0.3, height + 4.6)))
+        p = Vector((random.uniform(-3.4, 3.4), random.uniform(-3.4, 3.4), random.uniform(height - 0.3, height + 5.4)))
         d = canopy_sdf(p, spheres)
         if shell[0] <= d <= shell[1]:
             cand.append(p)
     pts = poisson_thin(cand, min_dist)
     for p in pts:
         n = canopy_normal(p, spheres)
-        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), n)
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), n, roll_range=roll_range)
     # 안쪽 채움 카드 (실루엣 구멍 방지)
     inner_pts = [p for p in cand if canopy_sdf(p, spheres) < shell[0] + 0.1][:inner]
     for p in inner_pts:
-        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), canopy_normal(p, spheres))
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), canopy_normal(p, spheres), roll_range=roll_range)
     leaves = mesh_object(name + "_leaves", verts, faces, "Leaf", uvs, normals)
     leaves.parent = trunk
     return trunk
@@ -340,6 +342,114 @@ def make_wall(name, seed, rows=2, row_h=0.55, length=2.0, thick=0.6, missing=0.1
     return ob
 
 
+# ------------------------------------------------------------------ 주인공 (로우폴리, 이목구비 없음)
+#
+# 원화: 긴 붉은 직모, 검은 셔츠(소매 걷음, 칼라), 벨트+버클, 와이드 팬츠, 검은 구두, 창백한 피부. 1.70 m, 6등신.
+# 절차 애니메이션 피벗(Body / HipL / HipR / Torso / ShoulderL / ShoulderR)을 엠프티로 만들고
+# 각 부위 메시를 그 아래에 둔다 → Godot 이 같은 이름의 Node3D 계층으로 가져온다.
+# 정면은 Blender +Y (= Godot -Z).
+
+def _prism(bm, center, r_bottom, r_top, height, mat, segs=8, sx=1.0, sy=1.0, rot=None):
+    """타원 단면 테이퍼 프리즘. center 는 밑면 중심."""
+    ret = bmesh.ops.create_cone(bm, cap_ends=True, segments=segs, radius1=r_bottom, radius2=r_top, depth=height)
+    vs = ret["verts"]
+    m = Matrix.Translation(center + Vector((0, 0, height * 0.5))) @ (rot if rot else Matrix.Identity(4)) @ Matrix.Diagonal((sx, sy, 1.0, 1.0))
+    for v in vs:
+        v.co = m @ v.co
+    return vs
+
+
+def _box(bm, center, size, taper_front=1.0, taper_bottom=1.0):
+    ret = bmesh.ops.create_cube(bm, size=1.0)
+    for v in ret["verts"]:
+        v.co.x *= size[0]
+        v.co.y *= size[1]
+        v.co.z *= size[2]
+        if v.co.y > 0 and taper_front != 1.0:   # 앞쪽(+Y) 폭 줄이기 (구두 코)
+            v.co.x *= taper_front
+        if v.co.z < 0 and taper_bottom != 1.0:  # 아래쪽 폭 (머리카락 끝)
+            v.co.x *= taper_bottom
+        v.co += center
+    return ret["verts"]
+
+
+def _part(name, bm_fill, mat_name, parent, parent_world):
+    bm = bmesh.new()
+    bm_fill(bm)
+    # 부모 엠프티 기준 로컬 좌표로 변환
+    for v in bm.verts:
+        v.co = v.co - parent_world
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material(mat_name))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.parent = parent
+    return ob
+
+
+def _empty(name, world_pos, parent=None):
+    e = bpy.data.objects.new(name, None)
+    bpy.context.scene.collection.objects.link(e)
+    if parent:
+        e.parent = parent
+        e.location = world_pos - Vector(parent.matrix_world.translation)
+    else:
+        e.location = world_pos
+    bpy.context.view_layer.update()
+    return e
+
+
+def make_player(name="player_red"):
+    random.seed(0)
+    Z = Vector((0, 0, 0))
+    body = _empty("Body", Z)
+    hip_l_w = Vector((-0.10, 0.0, 0.93))
+    hip_r_w = Vector((0.10, 0.0, 0.93))
+    torso_w = Vector((0.0, 0.0, 0.93))
+    sh_l_w = Vector((-0.225, 0.0, 1.42))
+    sh_r_w = Vector((0.225, 0.0, 1.42))
+    hip_l = _empty("HipL", hip_l_w, body)
+    hip_r = _empty("HipR", hip_r_w, body)
+    torso = _empty("Torso", torso_w, body)
+    sh_l = _empty("ShoulderL", sh_l_w, torso)
+    sh_r = _empty("ShoulderR", sh_r_w, torso)
+
+    # 골반(바지 허리) — 몸통(Body) 소속, 다리 회전과 무관
+    _part("Pelvis", lambda bm: _prism(bm, Vector((0, 0, 0.84)), 0.165, 0.155, 0.12, None, sx=1.1, sy=0.72), "Cloth", body, Z)
+
+    # 다리: 와이드 팬츠 — 아래로 갈수록 넓어짐, 구두
+    for side, hip, hw in (("L", hip_l, hip_l_w), ("R", hip_r, hip_r_w)):
+        sx = -1 if side == "L" else 1
+        _part("Leg" + side, lambda bm, hw=hw: _prism(bm, Vector((hw.x, 0, 0.07)), 0.135, 0.095, 0.87, None, sx=1.0, sy=0.9), "Cloth", hip, hw)
+        _part("Shoe" + side, lambda bm, hw=hw: _box(bm, Vector((hw.x, 0.07, 0.035)), (0.11, 0.30, 0.07), taper_front=0.45), "Shoe", hip, hw)
+
+    # 몸통: 셔츠(어깨 넓음), 칼라, 벨트, 버클, 목, 머리, 머리카락
+    _part("Belt", lambda bm: _prism(bm, Vector((0, 0, 0.94)), 0.16, 0.16, 0.07, None, sx=1.08, sy=0.74), "Belt", torso, torso_w)
+    _part("Buckle", lambda bm: _box(bm, Vector((0, 0.125, 0.975)), (0.065, 0.03, 0.05)), "Buckle", torso, torso_w)
+    _part("Shirt", lambda bm: _prism(bm, Vector((0, 0, 1.0)), 0.15, 0.20, 0.45, None, sx=1.15, sy=0.72), "Cloth", torso, torso_w)
+    _part("Collar", lambda bm: _box(bm, Vector((0, 0.03, 1.465)), (0.21, 0.13, 0.06)), "Cloth", torso, torso_w)
+    _part("Neck", lambda bm: _prism(bm, Vector((0, 0, 1.44)), 0.05, 0.05, 0.11, None), "Skin", torso, torso_w)
+    _part("Head", lambda bm: _prism(bm, Vector((0, 0, 1.51)), 0.095, 0.085, 0.23, None, sx=1.0, sy=1.1), "Skin", torso, torso_w)
+    # 머리카락: 캡 + 앞머리 + 긴 뒷머리(끝이 넓고 뾰족) + 옆머리 두 가닥
+    _part("HairCap", lambda bm: _prism(bm, Vector((0, 0, 1.64)), 0.12, 0.085, 0.135, None, sx=1.0, sy=1.12), "Hair", torso, torso_w)
+    _part("HairFringe", lambda bm: _box(bm, Vector((0, 0.095, 1.705)), (0.21, 0.06, 0.055)), "Hair", torso, torso_w)
+    _part("HairBack", lambda bm: _box(bm, Vector((0, -0.115, 1.22)), (0.24, 0.085, 0.92), taper_bottom=1.25), "Hair", torso, torso_w)
+    _part("HairSideL", lambda bm: _box(bm, Vector((-0.125, -0.01, 1.36)), (0.06, 0.10, 0.60)), "Hair", torso, torso_w)
+    _part("HairSideR", lambda bm: _box(bm, Vector((0.125, -0.01, 1.36)), (0.06, 0.10, 0.60)), "Hair", torso, torso_w)
+
+    # 팔: 걷어 올린 소매(두꺼운 커프) + 맨 팔뚝 + 손
+    for side, sh, sw in (("L", sh_l, sh_l_w), ("R", sh_r, sh_r_w)):
+        _part("UpperArm" + side, lambda bm, sw=sw: _prism(bm, Vector((sw.x, 0, 1.15)), 0.06, 0.07, 0.27, None), "Cloth", sh, sw)
+        _part("Cuff" + side, lambda bm, sw=sw: _prism(bm, Vector((sw.x, 0, 1.10)), 0.075, 0.072, 0.06, None), "Cloth", sh, sw)
+        _part("Forearm" + side, lambda bm, sw=sw: _prism(bm, Vector((sw.x, 0, 0.86)), 0.04, 0.047, 0.25, None), "Skin", sh, sw)
+        _part("Hand" + side, lambda bm, sw=sw: _box(bm, Vector((sw.x, 0.0, 0.81)), (0.05, 0.035, 0.10)), "Skin", sh, sw)
+    return body
+
+
 # ------------------------------------------------------------------ 내보내기
 
 def export(path):
@@ -373,4 +483,5 @@ build(make_wall, "wall_low_b.glb", "wall_low_b", 52, rows=2)
 build(make_wall, "wall_low_c.glb", "wall_low_c", 53, rows=2, missing=0.45)
 build(make_wall, "wall_tall_a.glb", "wall_tall_a", 61, rows=5, missing=0.1)
 build(make_wall, "wall_tall_b.glb", "wall_tall_b", 62, rows=5, missing=0.3)
+build(make_player, "player_red.glb")
 print("[gen_assets] done")

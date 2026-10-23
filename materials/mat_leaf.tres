@@ -6,10 +6,10 @@
 [resource]
 shader = ExtResource("1_shader")
 shader_parameter/card_tex = ExtResource("2_tex")
-shader_parameter/base_color = Color(0.84, 0.91, 0.52, 1)
+shader_parameter/base_color = Color(0.40, 0.46, 0.36, 1)
 shader_parameter/dark_factor = 0.42
 shader_parameter/mid_factor = 0.64
-shader_parameter/light_factor = 1.05
+shader_parameter/light_factor = 0.95
 shader_parameter/threshold_low = 0.22
 shader_parameter/threshold_high = 0.52
 shader_parameter/normal_up_bias = 0.35

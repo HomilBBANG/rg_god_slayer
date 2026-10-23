@@ -20,8 +20,8 @@ uniform float local_light_strength : hint_range(0.0, 1.0) = 0.25;
 // 구름 그림자 — 글로벌 노이즈 텍스처를 월드 XZ 에 투영해 방향광 감쇠에 곱한다 (기사 §Lighting)
 global uniform sampler2D cloud_noise;
 uniform float cloud_scale : hint_range(0.001, 0.2) = 0.011;
-uniform vec2 cloud_wind = vec2(0.6, 0.25);
-uniform float cloud_strength : hint_range(0.0, 1.0) = 0.38;
+uniform vec2 cloud_wind = vec2(0.35, 0.15);
+uniform float cloud_strength : hint_range(0.0, 1.0) = 0.5;
 uniform float cloud_cover_low : hint_range(0.0, 1.0) = 0.48;
 uniform float cloud_cover_high : hint_range(0.0, 1.0) = 0.62;
 
