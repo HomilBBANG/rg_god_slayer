@@ -71,7 +71,7 @@ game/
 | `elevation_deg` / `azimuth_deg` / `distance` | 52° / 45° / 25 m |
 | `look_offset` | (0, 0.8, 0) |
 | `smoothing_time` | 0.12 s (지수 보간) |
-| `pixel_scale` | 3 → 렌더 640×360 (+여유 2텍셀) 을 1080p 에 3배 nearest 확대 |
+| `pixel_scale` | **1** (네이티브 1080p, 회화풍 목표) — 3 으로 바꾸면 640×360 픽셀아트 모드 |
 | `margin_texels` | 2 (서브픽셀 패닝용 여유) |
 | `snap_enabled` | true (카메라를 텍셀 단위로 양자화, 잔량은 화면 TextureRect 오프셋으로) |
 | `bounds_min / max` | 리그 목표 XZ 클램프 (−13,−9) ~ (13,9) |
@@ -137,8 +137,9 @@ GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.
 
 - `DirectionalLight3D` 1개, 그림자 ON (4096, soft filter medium), 색 `(0.98, 0.93, 0.80)`.
 - 태양 방향은 `main.gd` 의 `light_presets` 에서 **화면 기준** `[고도각, 방위각(0=화면 오른쪽, 90=화면 위), 에너지]` 로 정의하고 카메라 축을 이용해 월드 방향으로 변환합니다. 기본 = 48°, 10°: 인물/벽의 오른쪽 면이 밝고 그림자가 화면 왼쪽으로 떨어집니다.
-- `WorldEnvironment`: 단색 배경(어두운 청회), ambient 약함(셰이더가 `ambient_light_disabled` 라 색면에는 영향 없음), 톤매핑 Filmic, **채도 0.72 / 밝기 0.96** (코즈믹 호러풍 저채도). GI/SSGI/SSR/SSAO/Glow/DOF/Fog 전부 OFF. 비네트·필름 그레인은 `RED_PixelEdge` 에서.
-- 팔레트: 탁한 베이지 흙(#AE9E7D), 회올리브 풀밭(#8F8F6B), 회녹색 잎(#66755C), 한랭 그림자 틴트(#292E3D), 붉은 머리(#80474 2), 먹색 옷. 구름 그림자 0.5.
+- `WorldEnvironment`: 단색 배경(어두운 청회), ambient 약함(셰이더가 `ambient_light_disabled` 라 색면에는 영향 없음), 톤매핑 Filmic, 채도 0.9. GI/SSGI/SSR/SSAO/Glow/DOF/Fog 전부 OFF. 비네트(0.3)·아주 약한 그레인(0.012)은 `RED_PixelEdge` 에서, 외곽선은 OFF.
+- **2톤 회화풍 조명** (레퍼런스 `accepted_style`): 햇빛은 따뜻한 모래빛(light_color 1.0/0.93/0.76, 고도 36° 로 긴 그림자), 그림자는 깊은 청회색(shadow_tint #26304D, 강도 0.74). 밴드 경계 0.18/0.42 로 거의 빛/그림자 두 톤. `paint_mottle` 이 월드 노이즈로 알베도에 ±10% 얼룩을 넣어 붓 자국 느낌.
+- 팔레트: 모래 흙(#D1BD8A), 올리브 풀밭(#80 8A57), 중성 회베이지 석재(#B3AB99 → 빛 면 따뜻/그늘 면 청회), 청회 타일(#6B7A8F), 붉은 지붕(#A83D2B), 흰 자작나무 줄기, 선명한 붉은 머리(#C23D33), 먹색 옷.
 - MSAA 2×.
 
 ## 플레이어 수치 (`player_controller.gd` export)
@@ -157,7 +158,11 @@ python3 tools/gen_textures.py                                      # 잎/풀/꽃
 
 | 에셋 | 구성 |
 |---|---|
-| `tree_a/b.glb` | 7각 테이퍼 줄기 + 뿌리혹, 위로 갈수록 작은 구를 쌓은 **원뿔형** 캐노피 표면에 포아송 간격으로 뿌린 **삼각형 잎 카드**(roll ±26° 로 끝이 위를 향함). **카드 노멀 = 캐노피 볼륨 노멀** → 덩어리 하나처럼 2~3톤 음영 |
+| `birch_a/b/c.glb` | 자작나무: 가늘고 흰 6각 줄기 + 가지, 위쪽 작은 구 4개 표면에 둥근 잎 카드 (**카드 노멀 = 볼륨 노멀** → 덩어리로 음영). 현재 배치되는 나무 |
+| `dead_tree_a/b.glb` | 고사목: 어두운 줄기 + 갈라진 1·2차 가지, 잎 없음 |
+| `bush2_a/b/c.glb` | 덩어리 덤불: 구 3~5개 합집합 표면 전체에 둥근 잎 카드 + 속 채움 둔덕 |
+| `cap_pillar_a/b.glb` | 사각 돌기둥 + 피라미드 캡 (레퍼런스 담장 기둥) |
+| `tree_a/b.glb` | (미배치) 원뿔형 캐노피 + 삼각형 잎 카드 침엽수 — `LeafTri` 머티리얼 |
 | `player_red.glb` | 주인공. 엠프티 계층 `Body/{HipL, HipR, Torso/{ShoulderL, ShoulderR}}` 아래에 부위 메시(와이드 팬츠 다리, 구두, 골반, 벨트+버클, 셔츠+칼라, 걷은 소매 커프, 맨 팔뚝, 손, 목, 머리, 머리카락 캡/앞머리/긴 뒷머리/옆머리). 이목구비 없음. Godot 이 같은 이름의 Node3D 계층으로 가져와 절차 애니메이션 피벗으로 쓴다. 정면 = Blender +Y = Godot −Z |
 | `rock_a~d.glb` | 노이즈 변위 이코스피어, 각도 제한 디졸브로 큰 면만, 플랫 셰이딩, 바닥 평평 |
 | `bush_a/b.glb` | 납작 둔덕(smooth) + 테두리 풀 카드(노멀 위) |

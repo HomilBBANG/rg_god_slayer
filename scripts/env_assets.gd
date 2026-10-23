@@ -21,6 +21,16 @@ const SCENES := {
 	"wall_low_c": preload("res://assets/environment/wall_low_c.glb"),
 	"wall_tall_a": preload("res://assets/environment/wall_tall_a.glb"),
 	"wall_tall_b": preload("res://assets/environment/wall_tall_b.glb"),
+	"birch_a": preload("res://assets/environment/birch_a.glb"),
+	"birch_b": preload("res://assets/environment/birch_b.glb"),
+	"birch_c": preload("res://assets/environment/birch_c.glb"),
+	"dead_tree_a": preload("res://assets/environment/dead_tree_a.glb"),
+	"dead_tree_b": preload("res://assets/environment/dead_tree_b.glb"),
+	"bush2_a": preload("res://assets/environment/bush2_a.glb"),
+	"bush2_b": preload("res://assets/environment/bush2_b.glb"),
+	"bush2_c": preload("res://assets/environment/bush2_c.glb"),
+	"cap_pillar_a": preload("res://assets/environment/cap_pillar_a.glb"),
+	"cap_pillar_b": preload("res://assets/environment/cap_pillar_b.glb"),
 }
 const WALL_SEG_LEN := 2.0
 const WALL_LOW_H := 1.1
@@ -29,9 +39,11 @@ const WALL_TALL_H := 2.75
 ## glTF 머티리얼 이름 → 셰이더 머티리얼
 const MATERIALS := {
 	"Leaf": preload("res://materials/mat_leaf.tres"),
+	"LeafTri": preload("res://materials/mat_leaf_tri.tres"),
+	"BarkDark": preload("res://materials/mat_bark_dark.tres"),
 	"Bark": preload("res://materials/mat_bark.tres"),
 	"Rock": preload("res://materials/mat_rock.tres"),
-	"Stone": preload("res://materials/mat_stone_lit.tres"),
+	"Stone": preload("res://materials/mat_stone_wall.tres"),
 	"Bush": preload("res://materials/mat_bush.tres"),
 	"GrassCard": preload("res://materials/mat_grasscard.tres"),
 	"Hair": preload("res://materials/mat_hair.tres"),
@@ -110,7 +122,7 @@ static func _apply_materials(node: Node) -> void:
 			if MATERIALS.has(mname):
 				mi.set_surface_override_material(i, MATERIALS[mname])
 			# 잎/풀 카드는 그림자를 드리우되 자기 그림자는 안 받는다 (셰이더에서 처리)
-		if mname_of(mi) in ["Leaf", "GrassCard"]:
+		if mname_of(mi) in ["Leaf", "LeafTri", "GrassCard"]:
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	for c in node.get_children():
 		_apply_materials(c)
@@ -126,10 +138,10 @@ static func _add_collision(inst: Node3D, kind: String) -> void:
 	body.name = "Collision"
 	body.collision_layer = LAYER_WORLD
 	body.collision_mask = 0
-	if kind.begins_with("tree"):
+	if kind.begins_with("tree") or kind.begins_with("birch") or kind.begins_with("dead"):
 		var shape := CollisionShape3D.new()
 		var cyl := CylinderShape3D.new()
-		cyl.radius = 0.32
+		cyl.radius = 0.25 if kind.begins_with("birch") else 0.32
 		cyl.height = 2.0
 		shape.shape = cyl
 		shape.position = Vector3(0.0, 1.0, 0.0)

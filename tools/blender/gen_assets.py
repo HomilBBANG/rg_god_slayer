@@ -186,6 +186,136 @@ def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.95, 1.3), shell
     return trunk
 
 
+def _canopy_cards(spheres, card_size, min_dist, shell=(-0.5, 0.05), inner=20, roll_range=math.pi, mat="Leaf", name="leaves", bbox=3.5, zr=(0.0, 8.0)):
+    verts, faces, uvs, normals = [], [], [], []
+    cand = []
+    for _ in range(9000):
+        p = Vector((random.uniform(-bbox, bbox), random.uniform(-bbox, bbox), random.uniform(*zr)))
+        d = canopy_sdf(p, spheres)
+        if shell[0] <= d <= shell[1]:
+            cand.append(p)
+    for p in poisson_thin(cand, min_dist):
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), canopy_normal(p, spheres), roll_range=roll_range)
+    for p in [p for p in cand if canopy_sdf(p, spheres) < shell[0] + 0.1][:inner]:
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), canopy_normal(p, spheres), roll_range=roll_range)
+    return mesh_object(name, verts, faces, mat, uvs, normals)
+
+
+def _branch(bm, base, direction, length, r0, r1, segs=5):
+    """base 에서 direction 으로 뻗는 테이퍼 가지"""
+    d = direction.normalized()
+    rot = Vector((0, 0, 1)).rotation_difference(d).to_matrix().to_4x4()
+    m = Matrix.Translation(base + d * length * 0.5) @ rot
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=segs, radius1=r0, radius2=r1, depth=length, matrix=m)
+
+
+def make_birch(name, seed, height=5.4):
+    """자작나무: 가늘고 흰 줄기 + 위쪽에 작은 잎 뭉치 몇 개 (레퍼런스)"""
+    random.seed(seed)
+    bm = bmesh.new()
+    lean = Vector((random.uniform(-0.25, 0.25), random.uniform(-0.25, 0.25), 0))
+    segs = 6
+    ring0 = [bm.verts.new((math.cos(a) * 0.15, math.sin(a) * 0.15, 0.0)) for a in [i / segs * math.tau for i in range(segs)]]
+    ring1 = [bm.verts.new((math.cos(a) * 0.08 + lean.x, math.sin(a) * 0.08 + lean.y, height)) for a in [i / segs * math.tau for i in range(segs)]]
+    for i in range(segs):
+        bm.faces.new((ring0[i], ring0[(i + 1) % segs], ring1[(i + 1) % segs], ring1[i]))
+    bm.faces.new(ring1)
+    for i in range(3):
+        a = random.uniform(0, math.tau)
+        z = height * random.uniform(0.55, 0.85)
+        _branch(bm, Vector((lean.x * z / height, lean.y * z / height, z)), Vector((math.cos(a), math.sin(a), 1.1)), random.uniform(0.9, 1.5), 0.06, 0.02)
+    me = bpy.data.meshes.new(name + "_trunk")
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(material("Bark"))
+    trunk = bpy.data.objects.new(name + "_trunk", me)
+    bpy.context.scene.collection.objects.link(trunk)
+    spheres = []
+    for i in range(4):
+        a = random.uniform(0, math.tau)
+        rr = random.uniform(0.3, 1.0)
+        z = height * random.uniform(0.68, 1.02)
+        spheres.append((Vector((math.cos(a) * rr + lean.x, math.sin(a) * rr + lean.y, z)), random.uniform(0.75, 1.1)))
+    leaves = _canopy_cards(spheres, (0.6, 0.9), 0.36, shell=(-0.4, 0.05), inner=12, name=name + "_leaves", bbox=2.6, zr=(height * 0.5, height + 1.6))
+    leaves.parent = trunk
+    return trunk
+
+
+def make_dead_tree(name, seed, height=4.2):
+    """고사목: 어두운 줄기 + 갈라진 가지, 잎 없음"""
+    random.seed(seed)
+    bm = bmesh.new()
+    _branch(bm, Vector((0, 0, 0)), Vector((random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), 1)), height, 0.22, 0.07, segs=6)
+    for i in range(5):
+        a = random.uniform(0, math.tau)
+        z = height * random.uniform(0.35, 0.95)
+        d = Vector((math.cos(a), math.sin(a), random.uniform(0.4, 1.4)))
+        L = random.uniform(1.0, 2.0)
+        _branch(bm, Vector((0, 0, z)), d, L, 0.07, 0.02)
+        # 2차 가지
+        tip = Vector((0, 0, z)) + d.normalized() * L * 0.6
+        _branch(bm, tip, d + Vector((random.uniform(-0.8, 0.8), random.uniform(-0.8, 0.8), 0.5)), L * 0.5, 0.035, 0.01, segs=4)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(material("BarkDark"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def make_bush2(name, seed, radius=1.3, height=0.9, lobes=4):
+    """둥근 덩어리 덤불: 구 몇 개 합집합 표면 전체에 잎 카드 + 속 채움 둔덕"""
+    random.seed(seed)
+    spheres = []
+    for i in range(lobes):
+        a = i / lobes * math.tau + random.uniform(-0.4, 0.4)
+        rr = radius * random.uniform(0.2, 0.55)
+        spheres.append((Vector((math.cos(a) * rr, math.sin(a) * rr, height * random.uniform(0.25, 0.55))), radius * random.uniform(0.5, 0.75)))
+    # 속 채움 둔덕 (카드 사이 구멍 가림)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    for v in bm.verts:
+        v.co.x *= radius * 0.8
+        v.co.y *= radius * 0.8
+        v.co.z = max(v.co.z * height * 0.7 + height * 0.3, 0.0)
+    me = bpy.data.meshes.new(name + "_core")
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    me.materials.append(material("Bush"))
+    core = bpy.data.objects.new(name + "_core", me)
+    bpy.context.scene.collection.objects.link(core)
+    leaves = _canopy_cards(spheres, (0.55, 0.85), 0.3, shell=(-0.35, 0.05), inner=10, name=name + "_leaves", bbox=radius * 1.6, zr=(0.0, height * 1.5))
+    leaves.parent = core
+    return core
+
+
+def make_cap_pillar(name, seed, width=0.9, height=2.3):
+    """사각 돌기둥 + 피라미드 캡 (레퍼런스 담장 기둥)"""
+    random.seed(seed)
+    bm = bmesh.new()
+    chipped_block(bm, (width * 1.2, width * 1.2, 0.25), Vector((0, 0, 0.125)), chip=0.05)
+    z = 0.25
+    n = max(2, int(height / 0.75))
+    for i in range(n):
+        h = (height - 0.25) / n
+        chipped_block(bm, (width, width, h), Vector((random.uniform(-0.02, 0.02), random.uniform(-0.02, 0.02), z + h * 0.5)), chip=0.06)
+        z += h
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=width * 0.78, radius2=0.03, depth=width * 0.55,
+                          matrix=Matrix.Translation(Vector((0, 0, z + width * 0.275))) @ Matrix.Rotation(math.radians(45), 4, "Z"))
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material("Stone"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
 # ------------------------------------------------------------------ 바위
 
 def make_rock(name, seed, scale=(1.0, 0.8, 0.7), subdiv=2, amp=0.28, freq=1.6):
@@ -484,4 +614,14 @@ build(make_wall, "wall_low_c.glb", "wall_low_c", 53, rows=2, missing=0.45)
 build(make_wall, "wall_tall_a.glb", "wall_tall_a", 61, rows=5, missing=0.1)
 build(make_wall, "wall_tall_b.glb", "wall_tall_b", 62, rows=5, missing=0.3)
 build(make_player, "player_red.glb")
+build(make_birch, "birch_a.glb", "birch_a", 71)
+build(make_birch, "birch_b.glb", "birch_b", 72, height=4.6)
+build(make_birch, "birch_c.glb", "birch_c", 73, height=6.0)
+build(make_dead_tree, "dead_tree_a.glb", "dead_tree_a", 81)
+build(make_dead_tree, "dead_tree_b.glb", "dead_tree_b", 82, height=3.4)
+build(make_bush2, "bush2_a.glb", "bush2_a", 91)
+build(make_bush2, "bush2_b.glb", "bush2_b", 92, radius=1.7, height=1.1, lobes=5)
+build(make_bush2, "bush2_c.glb", "bush2_c", 93, radius=1.0, height=0.7, lobes=3)
+build(make_cap_pillar, "cap_pillar_a.glb", "cap_pillar_a", 101)
+build(make_cap_pillar, "cap_pillar_b.glb", "cap_pillar_b", 102, width=0.7, height=1.6)
 print("[gen_assets] done")

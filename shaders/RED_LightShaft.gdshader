@@ -7,8 +7,8 @@ shader_type spatial;
 render_mode blend_add, cull_disabled, depth_draw_never, depth_test_disabled, specular_disabled, ambient_light_disabled, fog_disabled;
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
-uniform vec3 shaft_color : source_color = vec3(0.85, 0.82, 0.72);
-uniform float intensity : hint_range(0.0, 0.5) = 0.026;
+uniform vec3 shaft_color : source_color = vec3(1.0, 0.92, 0.72);
+uniform float intensity : hint_range(0.0, 0.5) = 0.03;
 // 지면 위 이 높이부터 서서히 사라짐
 uniform float fade_height_start : hint_range(0.0, 20.0) = 1.0;
 uniform float fade_height_end : hint_range(0.0, 30.0) = 7.5;

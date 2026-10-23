@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://shaders/RED_Leaf.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/environment/leaf_card_tri.png" id="2_tex"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/base_color = Color(0.40, 0.47, 0.30, 1)
+shader_parameter/card_tex = ExtResource("2_tex")
+shader_parameter/shadow_tint = Color(0.15, 0.19, 0.30, 1)
+shader_parameter/shadow_tint_strength = 0.74
+shader_parameter/normal_up_bias = 0.3

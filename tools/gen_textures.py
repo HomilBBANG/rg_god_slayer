@@ -24,7 +24,7 @@ def leaf_card(path, size=32, blobs=6):
                        or not (0 <= x + dx < size and 0 <= y + dy < size)
                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
             if edge:
-                c = 205
+                c = 232
             else:
                 c = 255
             px[x, y] = (c, c, c, 255)
@@ -83,8 +83,9 @@ def leaf_tri_card(path, size=32, tris=4):
             px[x, y] = (c, c, c, 255)
     im.save(OUT + path)
 
-random.seed(3); leaf_tri_card("leaf_card.png")
-random.seed(8); leaf_tri_card("leaf_card_b.png", tris=3)
+random.seed(3); leaf_tri_card("leaf_card_tri.png")
+random.seed(11); leaf_card("leaf_card.png", blobs=4)
+random.seed(5); leaf_card("leaf_card_b.png", blobs=3)
 random.seed(21); grass_card("grass_card.png")
 flower("flower.png")
 print("textures written")

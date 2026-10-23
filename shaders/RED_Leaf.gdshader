@@ -35,7 +35,7 @@ void fragment() {
 	vec4 t = texture(card_tex, UV);
 	ALPHA = t.a;
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
-	ALBEDO = base_color * t.rgb;
+	ALBEDO = base_color * t.rgb * paint_mottle(world_pos);
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
 	SPECULAR = 0.0;

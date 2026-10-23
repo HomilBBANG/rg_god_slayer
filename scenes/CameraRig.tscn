@@ -7,10 +7,15 @@
 render_priority = -128
 shader = ExtResource("2_edge")
 shader_parameter/depth_threshold = 0.22
-shader_parameter/edge_darken = 0.55
+shader_parameter/edge_darken = 1.0
 shader_parameter/normal_threshold = 0.35
-shader_parameter/edge_lighten = 0.12
+shader_parameter/edge_lighten = 0.0
+shader_parameter/edge_shadow_darken = 1.0
 shader_parameter/highlight_up_bias = 0.15
+shader_parameter/vignette_strength = 0.3
+shader_parameter/vignette_start = 0.5
+shader_parameter/grain_strength = 0.012
+shader_parameter/grain_fps = 8.0
 
 [sub_resource type="QuadMesh" id="QuadMesh_fullscreen"]
 material = SubResource("ShaderMaterial_edge")

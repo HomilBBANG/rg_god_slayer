@@ -13,6 +13,8 @@ const MAT_OLIVE := preload("res://materials/mat_olive.tres")
 const MAT_OLIVE_LIGHT := preload("res://materials/mat_olive_light.tres")
 const MAT_SLATE := preload("res://materials/mat_slate.tres")
 const MAT_GRASS := preload("res://materials/mat_grass_ground.tres")
+const MAT_ROOF := preload("res://materials/mat_roof.tres")
+const MAT_TILE_DARK := preload("res://materials/mat_tile_dark.tres")
 
 const LAYER_WORLD := 1
 
@@ -112,8 +114,18 @@ func _build_ground() -> void:
 # ---------------------------------------------------------------- 중앙 광장 돌길
 
 func _build_plaza() -> void:
-	# 큰 바닥 돌길 3장 (얇은 판)
-	_box(self, "Flagstone1", Vector3(7.0, 0.08, 7.0), Vector3(0.0, 0.05, 0.0), MAT_STONE_LIT, false)
+	# 체커 타일 광장 8×8 (모래빛 / 청회, 일부 빠짐) — 레퍼런스의 체크무늬 바닥
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1234
+	var tiles := Node3D.new()
+	tiles.name = "CheckerFloor"
+	add_child(tiles)
+	for ix in 8:
+		for iz in 8:
+			if rng.randf() < 0.14:
+				continue
+			var mat := MAT_STONE_LIT if (ix + iz) % 2 == 0 else MAT_TILE_DARK
+			_box(tiles, "Tile%d_%d" % [ix, iz], Vector3(0.96, 0.07, 0.96), Vector3(-3.5 + ix, 0.045, -3.5 + iz), mat, false)
 	_box(self, "Flagstone2", Vector3(3.0, 0.08, 9.0), Vector3(7.0, 0.05, -1.0), MAT_STONE_LIT, false, 90.0)
 	_box(self, "Flagstone3", Vector3(2.6, 0.08, 6.0), Vector3(0.0, 0.05, -7.5), MAT_STONE_LIT, false)
 
@@ -135,7 +147,7 @@ func _build_walls() -> void:
 	EnvAssets.wall(walls, "CorridorS", 8.0, Vector3(11.0, 0.0, 2.1))
 	# 북쪽 짧은 담 + 모서리 기둥
 	EnvAssets.wall(walls, "WallN1", 9.0, Vector3(-6.5, 0.0, -13.0))
-	EnvAssets.spawn(walls, "pillar_b", Vector3(-1.6, 0.0, -13.0), 0.0, 1.1)
+	EnvAssets.spawn(walls, "cap_pillar_a", Vector3(-1.6, 0.0, -13.0))
 
 
 # ---------------------------------------------------------------- 계단 + 단차 (보이는 계단 ≠ 충돌 램프)
@@ -198,7 +210,19 @@ func _build_ruin_building() -> void:
 	# 바닥
 	_box(b, "Floor", Vector3(w, 0.1, d), Vector3(cx, 0.05, cz), MAT_SLATE, false)
 	# 지붕 — 별도 노드. 플레이어가 안에 들어가면 숨긴다 (GDD §8 가림 처리 1차 추천)
-	roof = _box(b, "Roof", Vector3(w + 0.8, 0.35, d + 0.8), Vector3(cx, h + 0.17, cz), MAT_SLATE, false)
+	roof = Node3D.new()
+	roof.name = "Roof"
+	b.add_child(roof)
+	# 붉은 박공 지붕: 용마루가 x 축, 양쪽 경사면 28°
+	var pitch := deg_to_rad(28.0)
+	var half_d := (d + 1.0) * 0.5
+	var slope_len := half_d / cos(pitch)
+	for side in [-1.0, 1.0]:
+		var slab := _box(roof, "RoofSlab%s" % ("N" if side < 0 else "S"), Vector3(w + 1.0, 0.22, slope_len), Vector3(cx, h + slope_len * sin(pitch) * 0.5, cz + side * half_d * 0.5), MAT_ROOF, false)
+		slab.rotation.x = -side * pitch
+	_box(roof, "Ridge", Vector3(w + 1.1, 0.18, 0.3), Vector3(cx, h + slope_len * sin(pitch) + 0.02, cz), MAT_ROOF, false)
+	# 박공 벽 (지붕 아래 삼각 벽 대신 낮은 벽 두 장)
+	_box(roof, "GableW", Vector3(0.3, 0.9, d * 0.6), Vector3(cx - w * 0.5, h + 0.45, cz), MAT_STONE, false)
 	# 지붕 트리거
 	var area := Area3D.new()
 	area.name = "RoofTrigger"
@@ -221,10 +245,14 @@ func _build_trees() -> void:
 	var trees := Node3D.new()
 	trees.name = "Trees"
 	add_child(trees)
-	EnvAssets.spawn(trees, "tree_a", Vector3(-13.5, 0.0, 6.0))
-	EnvAssets.spawn(trees, "tree_b", Vector3(4.5, 0.0, -11.0))
-	EnvAssets.spawn(trees, "tree_a", Vector3(15.5, 1.0, -12.5), 0.0, 0.8)
-	EnvAssets.spawn(trees, "tree_b", Vector3(-15.0, 0.0, -4.5), 0.0, 0.9)
+	# 자작나무 (흰 줄기, 작은 잎 뭉치) + 고사목 (레퍼런스)
+	EnvAssets.spawn(trees, "birch_a", Vector3(-13.5, 0.0, 6.0))
+	EnvAssets.spawn(trees, "birch_b", Vector3(4.5, 0.0, -11.0))
+	EnvAssets.spawn(trees, "birch_c", Vector3(15.5, 1.0, -12.5), 0.0, 0.85)
+	EnvAssets.spawn(trees, "birch_a", Vector3(-15.0, 0.0, -4.5), 0.0, 0.9)
+	EnvAssets.spawn(trees, "birch_b", Vector3(9.5, 0.0, 7.5))
+	EnvAssets.spawn(trees, "dead_tree_a", Vector3(-7.0, 0.0, 11.8))
+	EnvAssets.spawn(trees, "dead_tree_b", Vector3(16.8, 0.0, -1.0), 0.0, 0.9)
 
 
 # ---------------------------------------------------------------- 그림자 가림 시험 구조물
@@ -260,14 +288,21 @@ func _build_details() -> void:
 	EnvAssets.spawn(d, "rock_c", Vector3(15.5, 1.0, -11.5), 140.0, 0.7)
 	EnvAssets.spawn(d, "rock_d", Vector3(-12.5, 0.0, 3.5), 10.0, 0.7)
 	# 덤불 둔덕 (풀밭 경계를 둥글게)
-	for b in [["bush_a", Vector3(-16.0, 0.0, 10.5)], ["bush_b", Vector3(-9.0, 0.0, 2.5)], ["bush_a", Vector3(-3.5, 0.0, 12.0)],
-			["bush_b", Vector3(9.0, 0.0, 9.5)], ["bush_a", Vector3(0.0, 0.0, -12.0)], ["bush_b", Vector3(17.0, 0.0, 8.0)],
-			["bush_a", Vector3(-15.0, 0.0, -9.5)], ["bush_a", Vector3(-7.5, 0.0, 12.5)]]:
+	for b in [["bush2_b", Vector3(-16.0, 0.0, 10.5)], ["bush2_a", Vector3(-9.0, 0.0, 2.5)], ["bush2_c", Vector3(-3.5, 0.0, 12.0)],
+			["bush2_b", Vector3(10.5, 0.0, 10.5)], ["bush2_a", Vector3(0.0, 0.0, -12.0)], ["bush2_b", Vector3(17.0, 0.0, 8.0)],
+			["bush2_a", Vector3(-15.0, 0.0, -9.5)], ["bush2_c", Vector3(-9.5, 0.0, 12.5)], ["bush2_c", Vector3(-12.0, 0.0, -1.0)],
+			["bush2_a", Vector3(-16.5, 0.0, 3.0)], ["bush2_c", Vector3(3.5, 0.0, 12.0)], ["bush2_b", Vector3(-5.5, 0.0, -11.5)]]:
 		EnvAssets.spawn(d, b[0], b[1])
 	# 폐허 기둥
 	EnvAssets.spawn(d, "pillar_a", Vector3(6.0, 0.0, 11.0), 15.0)
-	EnvAssets.spawn(d, "pillar_b", Vector3(17.5, 1.0, -6.0), -20.0)
 	EnvAssets.spawn(d, "pillar_a", Vector3(-6.0, 0.0, -2.5), 40.0, 0.8)
+	# 피라미드 캡 돌기둥 (레퍼런스 담장 기둥): 통로 입구, 테라스 모서리, 남쪽 담 끝
+	EnvAssets.spawn(d, "cap_pillar_a", Vector3(7.0, 0.0, -2.1))
+	EnvAssets.spawn(d, "cap_pillar_a", Vector3(7.0, 0.0, 2.1))
+	EnvAssets.spawn(d, "cap_pillar_b", Vector3(17.6, 1.0, -5.2))
+	EnvAssets.spawn(d, "cap_pillar_b", Vector3(8.3, 1.0, -13.0))
+	EnvAssets.spawn(d, "cap_pillar_a", Vector3(13.2, 0.0, 13.0))
+	EnvAssets.spawn(d, "cap_pillar_b", Vector3(-17.0, 0.0, 3.2))
 	# 광장 중앙 부서진 기둥 (받침 + 짧은 기둥)
 	_box(d, "PlinthBase", Vector3(1.6, 0.3, 1.6), Vector3(0.0, 0.2, -3.0), MAT_STONE_LIT)
 	_cylinder(d, "BrokenColumn", 0.42, 1.5, Vector3(0.0, 1.1, -3.0), MAT_STONE)

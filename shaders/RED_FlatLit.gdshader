@@ -28,13 +28,13 @@ void vertex() {
 
 
 void fragment() {
-	ALBEDO = base_color;
+	ALBEDO = base_color * paint_mottle(world_pos);
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
 	SPECULAR = 0.0;
 	// 주광이 전혀 닿지 않는 면도 완전한 검정이 되지 않도록, 색면용 기본 어둠을 한 번만 깔아 둔다.
 	// (ambient_light_disabled 이므로 환경 ambient는 여기에 더해지지 않는다.)
-	EMISSION = mix(base_color * dark_factor, shadow_tint * dark_factor, shadow_tint_strength);
+	EMISSION = mix(ALBEDO * dark_factor, shadow_tint * dark_factor, shadow_tint_strength);
 }
 
 

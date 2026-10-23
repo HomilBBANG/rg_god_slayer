@@ -27,7 +27,7 @@ extends Node3D
 
 @export_group("Pixel")
 ## 1080p 기준 렌더 텍셀 크기 (3 → 640×360 렌더). 메인 씬이 이 값으로 SubViewport 크기를 정한다.
-@export var pixel_scale: int = 3
+@export var pixel_scale: int = 1
 ## 서브텍셀 스크롤용 여유 텍셀 (각 변)
 @export var margin_texels: int = 2
 ## 텍셀 스냅 사용 (끄면 일반 부드러운 카메라)

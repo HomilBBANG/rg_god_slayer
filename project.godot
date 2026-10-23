@@ -100,6 +100,6 @@ cloud_noise={
 
 [rendering]
 
-lights_and_shadows/directional_shadow/size=2048
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 textures/canvas_textures/default_texture_filter=0

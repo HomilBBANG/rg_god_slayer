@@ -3,12 +3,12 @@
 
 // 3단계 밴드 밝기 계수
 uniform float dark_factor : hint_range(0.0, 1.0) = 0.40;
-uniform float mid_factor : hint_range(0.0, 1.0) = 0.72;
+uniform float mid_factor : hint_range(0.0, 1.0) = 0.62;
 uniform float light_factor : hint_range(0.0, 2.0) = 1.0;
 
 // 밴드 경계 (N·L × 감쇠 기준)
-uniform float threshold_low : hint_range(0.0, 1.0) = 0.32;
-uniform float threshold_high : hint_range(0.0, 1.0) = 0.70;
+uniform float threshold_low : hint_range(0.0, 1.0) = 0.18;
+uniform float threshold_high : hint_range(0.0, 1.0) = 0.42;
 uniform float edge_softness : hint_range(0.0, 0.2) = 0.04;
 
 // 방향광 그림자 감쇠를 부드럽게 (느리게 움직이는 해의 그림자 깜빡임 완화, 기사 §Lighting)
@@ -19,11 +19,22 @@ uniform float local_light_strength : hint_range(0.0, 1.0) = 0.25;
 
 // 구름 그림자 — 글로벌 노이즈 텍스처를 월드 XZ 에 투영해 방향광 감쇠에 곱한다 (기사 §Lighting)
 global uniform sampler2D cloud_noise;
-uniform float cloud_scale : hint_range(0.001, 0.2) = 0.011;
+uniform float cloud_scale : hint_range(0.001, 0.2) = 0.008;
 uniform vec2 cloud_wind = vec2(0.35, 0.15);
-uniform float cloud_strength : hint_range(0.0, 1.0) = 0.5;
+uniform float cloud_strength : hint_range(0.0, 1.0) = 0.35;
 uniform float cloud_cover_low : hint_range(0.0, 1.0) = 0.48;
 uniform float cloud_cover_high : hint_range(0.0, 1.0) = 0.62;
+
+
+// 회화풍 얼룩: 같은 노이즈를 작은 스케일로 읽어 알베도에 ±paint_strength 변화
+uniform float paint_strength : hint_range(0.0, 0.4) = 0.10;
+uniform float paint_scale : hint_range(0.01, 2.0) = 0.33;
+
+float paint_mottle(vec3 world_pos) {
+	float n = texture(cloud_noise, world_pos.xz * paint_scale + world_pos.y * 0.07).r;
+	float n2 = texture(cloud_noise, world_pos.xz * paint_scale * 3.1 + 0.37).r;
+	return 1.0 + ((n - 0.5) * 0.7 + (n2 - 0.5) * 0.3) * 2.0 * paint_strength;
+}
 
 
 // 월드 위치의 구름 감쇠 (1 = 맑음, 1-cloud_strength = 구름 그늘)
