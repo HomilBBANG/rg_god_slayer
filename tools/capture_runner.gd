@@ -57,7 +57,7 @@ func _process(_delta: float) -> bool:
 		5:
 			Input.action_release("attack")
 			var at: float = _player.get("_attack_time")
-			if not _attack_captured and _player.state == 2 and at >= 0.10 and at < 0.19:
+			if not _attack_captured and _player.state == 2 and at >= 0.07:
 				_attack_captured = true
 				_cap("03_attack.png")
 			if _frames - _frames_attack == 30:

@@ -12,5 +12,7 @@
 | 08_stairs_terrace.png | 계단(램프 충돌)으로 오른 1 m 테라스, 더미 02 |
 | 09_dodge_back.png | Shift (입력 없음) — 시선 유지한 채 뒤로 백스텝, 웅크림 포즈 |
 | 10_dodge_left.png | ← + Shift — 왼쪽으로 몸을 던지는 점프 |
+| 11_no_shafts_no_grass.png | 갓레이·잔디 OFF (비교용) |
+| 12_shafts_grass.png | 갓레이·잔디 ON — 셸 볼류메트릭, LIGHT_VERTEX 잔디, 구름 그림자 |
 
 재생성: `godot --path game -s tools/capture_runner.gd` → `user://captures/`
