@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://shaders/RED_Leaf.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/environment/grass_card.png" id="2_tex"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/base_color = Color(0.60, 0.80, 0.42, 1)
+shader_parameter/card_tex = ExtResource("2_tex")

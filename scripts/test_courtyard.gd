@@ -12,6 +12,7 @@ const MAT_GROUND := preload("res://materials/mat_ground.tres")
 const MAT_OLIVE := preload("res://materials/mat_olive.tres")
 const MAT_OLIVE_LIGHT := preload("res://materials/mat_olive_light.tres")
 const MAT_SLATE := preload("res://materials/mat_slate.tres")
+const MAT_GRASS := preload("res://materials/mat_grass_ground.tres")
 
 const LAYER_WORLD := 1
 
@@ -97,10 +98,12 @@ func _cylinder(parent: Node, n: String, radius: float, height: float, pos: Vecto
 
 func _build_ground() -> void:
 	# 바깥 올리브 지면(카메라 경계 밖이 비어 보이지 않도록 넉넉히)
-	var outer := _box(self, "GroundOuter", Vector3(80.0, 0.2, 80.0), Vector3(0.0, -0.1, 0.0), MAT_OLIVE)
+	var outer := _box(self, "GroundOuter", Vector3(80.0, 0.2, 80.0), Vector3(0.0, -0.1, 0.0), MAT_GRASS)
 	outer.name = "GroundOuter"
-	# 플레이 영역 흙바닥 36×28
-	_box(self, "GroundDust", Vector3(36.0, 0.06, 28.0), Vector3(0.0, 0.0, 0.0), MAT_GROUND, false)
+	# 안뜰 흙바닥: 광장 중심에서 동쪽 통로/계단으로 이어지는 큰 흙 색면 2장
+	_box(self, "GroundDust", Vector3(11.0, 0.06, 10.0), Vector3(1.0, 0.0, -1.0), MAT_GROUND, false)
+	_box(self, "GroundDustE", Vector3(11.0, 0.06, 4.2), Vector3(11.5, 0.0, 0.0), MAT_GROUND, false)
+	_box(self, "GroundDustN", Vector3(4.0, 0.06, 8.0), Vector3(13.0, 0.0, -4.0), MAT_GROUND, false)
 	# 큼직한 풀 색면 (디테일 없이 큰 덩어리 2개)
 	_box(self, "GrassPatchW", Vector3(9.0, 0.05, 11.0), Vector3(-12.5, 0.02, 4.0), MAT_OLIVE_LIGHT, false)
 	_box(self, "GrassPatchS", Vector3(14.0, 0.05, 6.0), Vector3(3.0, 0.02, 10.5), MAT_OLIVE_LIGHT, false)
@@ -132,7 +135,7 @@ func _build_walls() -> void:
 	_box(walls, "CorridorS", Vector3(8.0, 1.0, 0.6), Vector3(11.0, 0.5, 2.1), MAT_STONE)
 	# 북쪽 짧은 담 + 모서리 기둥
 	_box(walls, "WallN1", Vector3(9.0, 1.2, 0.6), Vector3(-6.5, 0.6, -13.0), MAT_STONE)
-	_box(walls, "PostN", Vector3(0.9, 1.7, 0.9), Vector3(-1.6, 0.85, -13.0), MAT_STONE_LIT)
+	EnvAssets.spawn(walls, "pillar_b", Vector3(-1.6, 0.0, -13.0), 0.0, 1.1)
 
 
 # ---------------------------------------------------------------- 계단 + 단차 (보이는 계단 ≠ 충돌 램프)
@@ -212,33 +215,16 @@ func _build_ruin_building() -> void:
 	b.add_child(area)
 
 
-# ---------------------------------------------------------------- 나무 3그루 (수관 3~4 덩어리)
+# ---------------------------------------------------------------- 나무 (Blender 에셋, 카드가 카메라를 향해 구워져 있어 yaw 0 고정)
 
 func _build_trees() -> void:
 	var trees := Node3D.new()
 	trees.name = "Trees"
 	add_child(trees)
-	_tree(trees, "Tree1", Vector3(-13.5, 0.0, 6.0), 4.2, 0.0)
-	_tree(trees, "Tree2", Vector3(4.5, 0.0, -11.0), 3.6, 35.0)
-	_tree(trees, "Tree3", Vector3(15.5, 1.0, -12.5), 3.0, -20.0)  # 테라스 위
-
-
-func _tree(parent: Node, n: String, pos: Vector3, height: float, yaw: float) -> void:
-	var t := Node3D.new()
-	t.name = n
-	t.position = pos
-	t.rotation_degrees.y = yaw
-	parent.add_child(t)
-	_cylinder(t, "Trunk", 0.22, height, Vector3(0.0, height * 0.5, 0.0), MAT_SLATE)
-	var crown := Node3D.new()
-	crown.name = "Crown"
-	crown.position = Vector3(0.0, height, 0.0)
-	t.add_child(crown)
-	var s := height * 0.55
-	_box(crown, "Blob1", Vector3(s * 1.1, s * 0.7, s * 1.1), Vector3(0.0, 0.0, 0.0), MAT_OLIVE, false, 20.0)
-	_box(crown, "Blob2", Vector3(s * 0.8, s * 0.6, s * 0.8), Vector3(s * 0.35, s * 0.35, -s * 0.2), MAT_OLIVE_LIGHT, false, -15.0)
-	_box(crown, "Blob3", Vector3(s * 0.7, s * 0.55, s * 0.7), Vector3(-s * 0.4, s * 0.25, s * 0.25), MAT_OLIVE, false, 40.0)
-	_box(crown, "Blob4", Vector3(s * 0.55, s * 0.45, s * 0.55), Vector3(0.0, s * 0.65, 0.0), MAT_OLIVE_LIGHT, false, 10.0)
+	EnvAssets.spawn(trees, "tree_a", Vector3(-13.5, 0.0, 6.0))
+	EnvAssets.spawn(trees, "tree_b", Vector3(4.5, 0.0, -11.0))
+	EnvAssets.spawn(trees, "tree_a", Vector3(15.5, 1.0, -12.5), 0.0, 0.8)
+	EnvAssets.spawn(trees, "tree_b", Vector3(-15.0, 0.0, -4.5), 0.0, 0.9)
 
 
 # ---------------------------------------------------------------- 그림자 가림 시험 구조물
@@ -270,11 +256,30 @@ func _build_details() -> void:
 	]
 	for i in caps.size():
 		_box(d, "Cap%d" % i, caps[i][0], caps[i][1], MAT_STONE_LIT, false)
-	# 무너져 떨어진 돌덩이 4개 (충돌 있음)
-	_box(d, "Rubble1", Vector3(1.3, 0.7, 0.9), Vector3(-3.0, 0.35, 11.6), MAT_STONE, true, 25.0)
-	_box(d, "Rubble2", Vector3(0.9, 0.5, 0.9), Vector3(-1.6, 0.25, 11.2), MAT_STONE_LIT, true, -40.0)
-	_box(d, "Rubble3", Vector3(1.1, 0.6, 1.4), Vector3(5.6, 0.3, -3.6), MAT_STONE, true, 60.0)
-	_box(d, "Rubble4", Vector3(1.6, 0.45, 1.0), Vector3(-14.5, 0.22, -5.5), MAT_STONE_LIT, true, 15.0)
+	# 무너져 떨어진 돌 블록 (Blender, 깎인 육면체)
+	EnvAssets.spawn(d, "block_a", Vector3(-3.0, 0.0, 11.6), 25.0)
+	EnvAssets.spawn(d, "block_b", Vector3(-1.6, 0.0, 11.2), -40.0, 0.8)
+	EnvAssets.spawn(d, "block_a", Vector3(5.6, 0.0, -3.6), 60.0, 0.9)
+	EnvAssets.spawn(d, "block_b", Vector3(-14.5, 0.0, -5.5), 15.0)
+	# 바위 (풀밭 가장자리와 통로 주변)
+	EnvAssets.spawn(d, "rock_a", Vector3(-15.5, 0.0, 2.0), 20.0, 1.1)
+	EnvAssets.spawn(d, "rock_b", Vector3(-9.5, 0.0, 9.5), 110.0, 0.9)
+	EnvAssets.spawn(d, "rock_c", Vector3(-11.5, 0.0, -1.5), -30.0, 0.8)
+	EnvAssets.spawn(d, "rock_a", Vector3(3.0, 0.0, -9.0), 80.0, 0.9)
+	EnvAssets.spawn(d, "rock_b", Vector3(16.5, 0.0, 4.5), 200.0, 1.2)
+	EnvAssets.spawn(d, "rock_d", Vector3(-6.0, 0.0, 11.5), 45.0, 1.0)
+	EnvAssets.spawn(d, "rock_d", Vector3(6.5, 0.0, 10.8), -70.0, 1.3)
+	EnvAssets.spawn(d, "rock_c", Vector3(15.5, 1.0, -11.5), 140.0, 0.7)
+	EnvAssets.spawn(d, "rock_d", Vector3(-12.5, 0.0, 3.5), 10.0, 0.7)
+	# 덤불 둔덕 (풀밭 경계를 둥글게)
+	for b in [["bush_a", Vector3(-16.0, 0.0, 10.5)], ["bush_b", Vector3(-9.0, 0.0, 2.5)], ["bush_a", Vector3(-3.5, 0.0, 12.0)],
+			["bush_b", Vector3(9.0, 0.0, 9.5)], ["bush_a", Vector3(0.0, 0.0, -12.0)], ["bush_b", Vector3(17.0, 0.0, 8.0)],
+			["bush_a", Vector3(-15.0, 0.0, -9.5)], ["bush_a", Vector3(-7.5, 0.0, 12.5)]]:
+		EnvAssets.spawn(d, b[0], b[1])
+	# 폐허 기둥
+	EnvAssets.spawn(d, "pillar_a", Vector3(6.0, 0.0, 11.0), 15.0)
+	EnvAssets.spawn(d, "pillar_b", Vector3(17.5, 1.0, -6.0), -20.0)
+	EnvAssets.spawn(d, "pillar_a", Vector3(-6.0, 0.0, -2.5), 40.0, 0.8)
 	# 광장 중앙 부서진 기둥 (받침 + 짧은 기둥)
 	_box(d, "PlinthBase", Vector3(1.6, 0.3, 1.6), Vector3(0.0, 0.2, -3.0), MAT_STONE_LIT)
 	_cylinder(d, "BrokenColumn", 0.42, 1.5, Vector3(0.0, 1.1, -3.0), MAT_STONE)
@@ -286,14 +291,6 @@ func _build_details() -> void:
 	# 테라스 가장자리 난간 조각 2개
 	_box(d, "ParapetA", Vector3(3.0, 0.6, 0.5), Vector3(10.5, 1.3, -12.75), MAT_STONE)
 	_box(d, "ParapetB", Vector3(2.2, 0.6, 0.5), Vector3(16.2, 1.3, -12.75), MAT_STONE)
-	# 나뭇가지 (수관 아래 짧은 가지 — 실루엣 변화)
-	for t in get_node("Trees").get_children():
-		var trunk := t.get_node("Trunk") as Node3D
-		var h: float = (trunk.get_node("Mesh") as MeshInstance3D).mesh.height
-		var b1 := _cylinder(t, "Branch1", 0.1, 1.2, Vector3(0.45, h * 0.78, 0.1), MAT_SLATE, false)
-		b1.rotation_degrees = Vector3(0.0, 0.0, -55.0)
-		var b2 := _cylinder(t, "Branch2", 0.08, 0.9, Vector3(-0.3, h * 0.68, -0.3), MAT_SLATE, false)
-		b2.rotation_degrees = Vector3(40.0, 0.0, 45.0)
 
 
 # ---------------------------------------------------------------- 맵 경계 (보이지 않는 충돌)

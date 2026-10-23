@@ -2,8 +2,8 @@
 // RED_FlatLit / RED_Grass 가 #include 해서 같은 그림체를 공유한다.
 
 // 3단계 밴드 밝기 계수
-uniform float dark_factor : hint_range(0.0, 1.0) = 0.22;
-uniform float mid_factor : hint_range(0.0, 1.0) = 0.65;
+uniform float dark_factor : hint_range(0.0, 1.0) = 0.40;
+uniform float mid_factor : hint_range(0.0, 1.0) = 0.72;
 uniform float light_factor : hint_range(0.0, 2.0) = 1.0;
 
 // 밴드 경계 (N·L × 감쇠 기준)

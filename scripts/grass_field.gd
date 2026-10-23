@@ -5,7 +5,6 @@ class_name GrassField
 extends MultiMeshInstance3D
 
 const SHADER := preload("res://shaders/RED_Grass.gdshader")
-const TUFT_TEX := preload("res://assets/environment/grass_tuft.png")
 
 ## [Rect2(x, z, w, d), density(개/m²)] 목록
 @export var patches: Array = [
@@ -13,6 +12,8 @@ const TUFT_TEX := preload("res://assets/environment/grass_tuft.png")
 	[Rect2(-4.0, 7.5, 14.0, 6.0), 1.6],     # 남쪽 풀밭
 ]
 @export var seed_value: int = 7
+@export var texture: Texture2D = preload("res://assets/environment/grass_tuft.png")
+@export var sway: float = 0.05
 @export var tuft_size: Vector2 = Vector2(0.55, 0.45)
 @export var size_jitter: float = 0.35
 @export var base_color: Color = Color(0.57, 0.61, 0.46)
@@ -51,7 +52,8 @@ func _ready() -> void:
 
 	var mat := ShaderMaterial.new()
 	mat.shader = SHADER
-	mat.set_shader_parameter("tuft_tex", TUFT_TEX)
+	mat.set_shader_parameter("tuft_tex", texture)
+	mat.set_shader_parameter("sway_amount", sway)
 	mat.set_shader_parameter("base_color", base_color)
 	material_override = mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

@@ -1,0 +1,340 @@
+"""
+RED 환경 에셋 생성 — Blender 헤드리스 스크립트
+    blender -b -P tools/blender/gen_assets.py -- assets/environment
+
+레퍼런스(t3ssel8r 풍 3D 픽셀아트)에 맞춘 저폴리 에셋을 절차적으로 만들어 glTF(.glb)로 내보낸다.
+  tree_a/b.glb      줄기 + 구형 볼륨 표면에 뿌린 잎 카드(카드 노멀 = 볼륨 노멀 → 덩어리 하나처럼 2톤 음영)
+  rock_a/b/c/d.glb  노이즈 변위 이코스피어, 플랫 셰이딩, 바닥 평평
+  bush_a/b.glb      납작한 둔덕 + 가장자리 풀 카드
+  pillar_a/b.glb    깎인 돌 블록을 쌓은 폐허 기둥
+  block_a/b.glb     흩어진 돌 블록
+카드는 카메라가 고정(고도 52°, 방위 45°)이므로 카메라를 향하도록 미리 회전해 둔다.
+glTF 머티리얼 이름(Leaf/Bark/Rock/Stone/GrassCard/Bush)을 Godot 쪽에서 셰이더 머티리얼로 치환한다.
+"""
+import bpy, bmesh, sys, math, random
+from mathutils import Vector, Matrix, noise
+
+OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else "assets/environment"
+
+# Godot 카메라 시선 (x, y-up, z) = (-0.435, -0.788, -0.435) → Blender(z-up): (x, -z, y)
+CAM_DIR = Vector((-0.435, 0.435, -0.788)).normalized()
+CARD_NORMAL = -CAM_DIR  # 카드가 카메라를 마주보는 방향
+
+
+def reset():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+
+
+def material(name):
+    m = bpy.data.materials.get(name)
+    if m is None:
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+    return m
+
+
+def mesh_object(name, verts, faces, mat_name, uvs=None, custom_normals=None, smooth=False):
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    me.update()
+    me.materials.append(material(mat_name))
+    for p in me.polygons:
+        p.use_smooth = smooth
+    if uvs is not None:
+        uv = me.uv_layers.new(name="UVMap")
+        for poly in me.polygons:
+            for li in poly.loop_indices:
+                vi = me.loops[li].vertex_index
+                uv.data[li].uv = uvs[vi]
+    if custom_normals is not None:
+        me.use_auto_smooth = True
+        me.normals_split_custom_set_from_vertices([Vector(n).normalized() for n in custom_normals])
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def card_basis(roll, tilt):
+    """카메라를 향하는 쿼드의 (right, up) 축. roll: 카드 평면 내 회전, tilt: 법선 흔들림."""
+    n = CARD_NORMAL.copy()
+    # 임의 축으로 살짝 기울임
+    axis = Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))).normalized()
+    n = (Matrix.Rotation(tilt, 4, axis) @ n).normalized()
+    up0 = Vector((0, 0, 1))
+    right = up0.cross(n).normalized()
+    up = n.cross(right).normalized()
+    rot = Matrix.Rotation(roll, 4, n)
+    return (rot @ right).normalized(), (rot @ up).normalized()
+
+
+def add_cards(verts, faces, uvs, normals, center, size, normal, roll=None, tilt=0.35, aspect=1.0):
+    """center 에 size 크기의 카메라향 쿼드 1장 추가. normal = 조명용 커스텀 노멀."""
+    if roll is None:
+        roll = random.uniform(-math.pi, math.pi)
+    r, u = card_basis(roll, random.uniform(-tilt, tilt))
+    hw, hh = size * 0.5, size * 0.5 * aspect
+    i = len(verts)
+    verts += [center - r * hw - u * hh, center + r * hw - u * hh, center + r * hw + u * hh, center - r * hw + u * hh]
+    faces.append((i, i + 1, i + 2, i + 3))
+    uvs += [(0, 1), (1, 1), (1, 0), (0, 0)]
+    normals += [normal] * 4
+
+
+def poisson_thin(points, min_dist):
+    kept = []
+    cell = min_dist
+    grid = {}
+    for p in points:
+        key = (int(p.x // cell), int(p.y // cell), int(p.z // cell))
+        ok = True
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    for q in grid.get((key[0] + dx, key[1] + dy, key[2] + dz), ()):
+                        if (p - q).length < min_dist:
+                            ok = False
+                            break
+                    if not ok:
+                        break
+                if not ok:
+                    break
+            if not ok:
+                break
+        if ok:
+            kept.append(p)
+            grid.setdefault(key, []).append(p)
+    return kept
+
+
+# ------------------------------------------------------------------ 나무
+
+def canopy_sdf(p, spheres):
+    """smooth-min 구 합집합 SDF 와 그 그래디언트 근사 노멀"""
+    k = 0.6
+    d = 1e9
+    for c, r in spheres:
+        di = (p - c).length - r
+        # polynomial smooth min
+        h = max(k - abs(d - di), 0.0) / k
+        d = min(d, di) - h * h * k * 0.25
+    return d
+
+
+def canopy_normal(p, spheres):
+    e = 0.05
+    dx = canopy_sdf(p + Vector((e, 0, 0)), spheres) - canopy_sdf(p - Vector((e, 0, 0)), spheres)
+    dy = canopy_sdf(p + Vector((0, e, 0)), spheres) - canopy_sdf(p - Vector((0, e, 0)), spheres)
+    dz = canopy_sdf(p + Vector((0, 0, e)), spheres) - canopy_sdf(p - Vector((0, 0, e)), spheres)
+    n = Vector((dx, dy, dz))
+    return n.normalized() if n.length > 1e-6 else Vector((0, 0, 1))
+
+
+def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.55, 0.8), shell=(-0.45, 0.05), min_dist=0.26, inner=60):
+    random.seed(seed)
+    # 줄기: 7각 테이퍼 실린더, 살짝 기울임
+    bm = bmesh.new()
+    segs = 7
+    r0, r1 = 0.26, 0.16
+    lean = Vector((random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), 0))
+    ring0 = [bm.verts.new((math.cos(a) * r0, math.sin(a) * r0, 0.0)) for a in [i / segs * math.tau for i in range(segs)]]
+    ring1 = [bm.verts.new((math.cos(a) * r1 + lean.x, math.sin(a) * r1 + lean.y, height)) for a in [i / segs * math.tau for i in range(segs)]]
+    for i in range(segs):
+        bm.faces.new((ring0[i], ring0[(i + 1) % segs], ring1[(i + 1) % segs], ring1[i]))
+    bm.faces.new(ring1)
+    # 뿌리 혹 2개
+    for _ in range(2):
+        a = random.uniform(0, math.tau)
+        base = Vector((math.cos(a) * r0 * 0.9, math.sin(a) * r0 * 0.9, 0.0))
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=0.16, radius2=0.05, depth=0.5,
+                              matrix=Matrix.Translation(base + Vector((math.cos(a) * 0.12, math.sin(a) * 0.12, 0.12))) @ Matrix.Rotation(math.radians(70), 4, Vector((-math.sin(a), math.cos(a), 0))))
+    me = bpy.data.meshes.new(name + "_trunk")
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(material("Bark"))
+    trunk = bpy.data.objects.new(name + "_trunk", me)
+    bpy.context.scene.collection.objects.link(trunk)
+
+    # 잎 카드
+    if spheres is None:
+        top = height + 1.9
+        spheres = [
+            (Vector((0.0, 0.0, top)), 1.9),
+            (Vector((0.75, 0.3, top + 0.4)), 1.35),
+            (Vector((-0.65, -0.35, top + 0.3)), 1.3),
+            (Vector((0.15, -0.55, top + 1.05)), 1.05),
+            (Vector((-0.2, 0.6, top - 0.5)), 1.1),
+        ]
+    verts, faces, uvs, normals = [], [], [], []
+    cand = []
+    for _ in range(9000):
+        p = Vector((random.uniform(-3.4, 3.4), random.uniform(-3.4, 3.4), random.uniform(height - 0.3, height + 4.6)))
+        d = canopy_sdf(p, spheres)
+        if shell[0] <= d <= shell[1]:
+            cand.append(p)
+    pts = poisson_thin(cand, min_dist)
+    for p in pts:
+        n = canopy_normal(p, spheres)
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), n)
+    # 안쪽 채움 카드 (실루엣 구멍 방지)
+    inner_pts = [p for p in cand if canopy_sdf(p, spheres) < shell[0] + 0.1][:inner]
+    for p in inner_pts:
+        add_cards(verts, faces, uvs, normals, p, random.uniform(*card_size), canopy_normal(p, spheres))
+    leaves = mesh_object(name + "_leaves", verts, faces, "Leaf", uvs, normals)
+    leaves.parent = trunk
+    return trunk
+
+
+# ------------------------------------------------------------------ 바위
+
+def make_rock(name, seed, scale=(1.0, 0.8, 0.7), subdiv=2, amp=0.28, freq=1.6):
+    random.seed(seed)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0)
+    off = Vector((random.uniform(0, 50), random.uniform(0, 50), random.uniform(0, 50)))
+    for v in bm.verts:
+        n = noise.noise((v.co * freq) + off)
+        n2 = noise.noise((v.co * freq * 2.3) + off * 1.7) * 0.4
+        v.co = v.co * (1.0 + amp * (n + n2))
+        v.co.x *= scale[0]
+        v.co.y *= scale[1]
+        v.co.z *= scale[2]
+    # 바닥 평평하게 + 약간 묻힘
+    zmin = min(v.co.z for v in bm.verts)
+    for v in bm.verts:
+        v.co.z = max(v.co.z, zmin * 0.55) - zmin * 0.55 - 0.08
+    # 큰 면만 남도록 약간 디시메이트 느낌: dissolve 작은 각도
+    bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(14), verts=bm.verts, edges=bm.edges)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material("Rock"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+# ------------------------------------------------------------------ 덤불 둔덕
+
+def make_bush(name, seed, radius=1.1, height=0.55, cards=52):
+    random.seed(seed)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    off = Vector((random.uniform(0, 50), random.uniform(0, 50), 0))
+    for v in bm.verts:
+        n = noise.noise(v.co * 1.8 + off)
+        v.co = v.co * (1.0 + 0.16 * n)
+        v.co.x *= radius
+        v.co.y *= radius * random.uniform(0.95, 1.05)
+        v.co.z = v.co.z * height
+    for v in bm.verts:
+        v.co.z = max(v.co.z, -0.05)
+    me = bpy.data.meshes.new(name + "_mound")
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    me.materials.append(material("Bush"))
+    mound = bpy.data.objects.new(name + "_mound", me)
+    bpy.context.scene.collection.objects.link(mound)
+    # 가장자리 풀 카드: 둔덕 테두리를 따라, 노멀은 위
+    verts, faces, uvs, normals = [], [], [], []
+    for i in range(cards):
+        a = i / cards * math.tau + random.uniform(-0.1, 0.1)
+        rr = radius * random.uniform(0.75, 1.05)
+        p = Vector((math.cos(a) * rr, math.sin(a) * rr, height * 0.35 * random.uniform(0.4, 1.0)))
+        add_cards(verts, faces, uvs, normals, p, random.uniform(0.6, 0.9), Vector((0, 0, 1)), roll=random.uniform(-0.15, 0.15), tilt=0.15, aspect=0.55)
+    rim = mesh_object(name + "_rim", verts, faces, "GrassCard", uvs, normals)
+    rim.parent = mound
+    return mound
+
+
+# ------------------------------------------------------------------ 돌 기둥 / 블록
+
+def chipped_block(bm, size, center, chip=0.12):
+    """베벨 느낌의 깎인 육면체: 꼭짓점을 안쪽으로 랜덤 이동"""
+    ret = bmesh.ops.create_cube(bm, size=1.0)
+    vs = ret["verts"]
+    for v in vs:
+        v.co.x *= size[0]
+        v.co.y *= size[1]
+        v.co.z *= size[2]
+        if random.random() < 0.35:
+            v.co.x -= math.copysign(random.uniform(0, chip), v.co.x)
+            v.co.y -= math.copysign(random.uniform(0, chip), v.co.y)
+            v.co.z -= math.copysign(random.uniform(0, chip * 0.7), v.co.z)
+        v.co += center
+    return vs
+
+
+def make_pillar(name, seed, blocks=5, broken_top=True):
+    random.seed(seed)
+    bm = bmesh.new()
+    chipped_block(bm, (1.1, 1.1, 0.3), Vector((0, 0, 0.15)), chip=0.08)
+    z = 0.3
+    for i in range(blocks):
+        h = random.uniform(0.42, 0.58)
+        w = 0.72 - i * 0.02
+        jitter = Vector((random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05), 0))
+        if broken_top and i == blocks - 1:
+            # 마지막 블록은 반쯤 부서짐
+            chipped_block(bm, (w, w * random.uniform(0.5, 0.8), h * 0.6), Vector((random.uniform(-0.1, 0.1), random.uniform(-0.15, 0.15), z + h * 0.3)) + jitter, chip=0.2)
+        else:
+            chipped_block(bm, (w, w, h), Vector((0, 0, z + h * 0.5)) + jitter, chip=0.1)
+        z += h
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material("Stone"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def make_block(name, seed, size=(1.2, 0.8, 0.6)):
+    random.seed(seed)
+    bm = bmesh.new()
+    chipped_block(bm, size, Vector((0, 0, size[2] * 0.45)), chip=0.16)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material("Stone"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+# ------------------------------------------------------------------ 내보내기
+
+def export(path):
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True,
+                              export_yup=True, export_apply=True, export_materials="EXPORT",
+                              export_normals=True, export_texcoords=True, export_animations=False)
+
+
+def build(fn, filename, *args, **kwargs):
+    reset()
+    fn(*args, **kwargs)
+    export(f"{OUT}/{filename}")
+    print("[gen_assets] wrote", filename)
+
+
+build(make_tree, "tree_a.glb", "tree_a", 1)
+build(make_tree, "tree_b.glb", "tree_b", 2, height=1.5, card_size=(0.5, 0.72))
+build(make_rock, "rock_a.glb", "rock_a", 11, scale=(1.0, 0.85, 0.75))
+build(make_rock, "rock_b.glb", "rock_b", 12, scale=(1.3, 0.9, 0.6), amp=0.22)
+build(make_rock, "rock_c.glb", "rock_c", 13, scale=(0.8, 0.7, 0.9), amp=0.32)
+build(make_rock, "rock_d.glb", "rock_d", 14, scale=(0.55, 0.5, 0.45), subdiv=1, amp=0.3)
+build(make_bush, "bush_a.glb", "bush_a", 21)
+build(make_bush, "bush_b.glb", "bush_b", 22, radius=1.5, height=0.65, cards=70)
+build(make_pillar, "pillar_a.glb", "pillar_a", 31, blocks=5)
+build(make_pillar, "pillar_b.glb", "pillar_b", 32, blocks=3, broken_top=True)
+build(make_block, "block_a.glb", "block_a", 41)
+build(make_block, "block_b.glb", "block_b", 42, size=(0.8, 0.8, 0.8))
+print("[gen_assets] done")

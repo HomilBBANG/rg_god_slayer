@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/TestCourtyard.tscn" id="2_courtyard"]
@@ -8,10 +8,11 @@
 [ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="6_hud"]
 [ext_resource type="Script" path="res://scripts/light_shafts.gd" id="7_shafts"]
 [ext_resource type="Script" path="res://scripts/grass_field.gd" id="8_grass"]
+[ext_resource type="Texture2D" path="res://assets/environment/flower.png" id="9_flower"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
-background_color = Color(0.33, 0.4, 0.43, 1)
+background_color = Color(0.36, 0.52, 0.40, 1)
 ambient_light_source = 1
 ambient_light_color = Color(0.45, 0.53, 0.58, 1)
 ambient_light_energy = 0.35
@@ -26,7 +27,7 @@ fog_enabled = false
 adjustment_enabled = true
 adjustment_brightness = 1.0
 adjustment_contrast = 1.0
-adjustment_saturation = 0.9
+adjustment_saturation = 1.08
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributes_main"]
 dof_blur_far_enabled = false
@@ -75,6 +76,20 @@ directional_shadow_max_distance = 60.0
 
 [node name="GrassField" type="MultiMeshInstance3D" parent="World"]
 script = ExtResource("8_grass")
+patches = [[Rect2(-17, -1.5, 9, 11), 1.4], [Rect2(-4, 7.5, 14, 6), 1.4], [Rect2(-17, -13, 34, 26), 0.35]]
+base_color = Color(0.62, 0.82, 0.46, 1)
+exclude_rects = [Rect2(-3.6, -3.6, 7.2, 7.2), Rect2(7, -2.6, 9, 5.2), Rect2(-14, -11, 8, 7), Rect2(8, -13, 10, 8), Rect2(-2, -11, 4, 8)]
+
+[node name="FlowerField" type="MultiMeshInstance3D" parent="World"]
+script = ExtResource("8_grass")
+patches = [[Rect2(-17, -1.5, 9, 11), 0.18], [Rect2(-4, 7.5, 14, 6), 0.18], [Rect2(-17, -13, 34, 26), 0.03]]
+seed_value = 99
+texture = ExtResource("9_flower")
+tuft_size = Vector2(0.28, 0.28)
+size_jitter = 0.2
+base_color = Color(0.95, 0.9, 1.0, 1)
+sway = 0.015
+exclude_rects = [Rect2(-3.6, -3.6, 7.2, 7.2), Rect2(7, -2.6, 9, 5.2), Rect2(-14, -11, 8, 7), Rect2(8, -13, 10, 8)]
 
 [node name="LightShafts" type="Node3D" parent="World"]
 script = ExtResource("7_shafts")
