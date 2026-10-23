@@ -124,17 +124,17 @@ func _build_walls() -> void:
 	var walls := Node3D.new()
 	walls.name = "Walls"
 	add_child(walls)
-	# 남쪽 긴 담
-	_box(walls, "WallS1", Vector3(12.0, 1.1, 0.6), Vector3(-8.0, 0.55, 13.0), MAT_STONE)
-	_box(walls, "WallS2", Vector3(10.0, 1.3, 0.6), Vector3(8.0, 0.65, 13.0), MAT_STONE)
+	# 남쪽 긴 담 (Blender 블록 모듈)
+	EnvAssets.wall(walls, "WallS1", 12.0, Vector3(-8.0, 0.0, 13.0))
+	EnvAssets.wall(walls, "WallS2", 10.0, Vector3(8.0, 0.0, 13.0))
 	# 서쪽 담 (틈 하나)
-	_box(walls, "WallW1", Vector3(0.6, 1.2, 9.0), Vector3(-17.0, 0.6, 8.0), MAT_STONE)
-	_box(walls, "WallW2", Vector3(0.6, 1.0, 8.0), Vector3(-17.0, 0.5, -8.0), MAT_STONE)
-	# 동쪽 좁은 통로를 만드는 담 두 줄 (통로 폭 2.2m)
-	_box(walls, "CorridorN", Vector3(8.0, 1.4, 0.6), Vector3(11.0, 0.7, -2.1), MAT_STONE)
-	_box(walls, "CorridorS", Vector3(8.0, 1.0, 0.6), Vector3(11.0, 0.5, 2.1), MAT_STONE)
+	EnvAssets.wall(walls, "WallW1", 9.0, Vector3(-17.0, 0.0, 8.0), 90.0)
+	EnvAssets.wall(walls, "WallW2", 8.0, Vector3(-17.0, 0.0, -8.0), 90.0)
+	# 동쪽 좁은 통로를 만드는 담 두 줄. 북벽은 x 7~11 까지만 — 계단(x 11.4~14.6) 앞은 비워 둔다
+	EnvAssets.wall(walls, "CorridorN", 4.0, Vector3(9.0, 0.0, -2.1))
+	EnvAssets.wall(walls, "CorridorS", 8.0, Vector3(11.0, 0.0, 2.1))
 	# 북쪽 짧은 담 + 모서리 기둥
-	_box(walls, "WallN1", Vector3(9.0, 1.2, 0.6), Vector3(-6.5, 0.6, -13.0), MAT_STONE)
+	EnvAssets.wall(walls, "WallN1", 9.0, Vector3(-6.5, 0.0, -13.0))
 	EnvAssets.spawn(walls, "pillar_b", Vector3(-1.6, 0.0, -13.0), 0.0, 1.1)
 
 
@@ -146,7 +146,7 @@ func _build_stairs_and_terrace() -> void:
 	add_child(terrace)
 	# 북동 단차: 1.0m 높이 테라스 (더미 공간)
 	_box(terrace, "TerraceTop", Vector3(10.0, 1.0, 8.0), Vector3(13.0, 0.5, -9.0), MAT_STONE_LIT)
-	_box(terrace, "TerraceEdgeW", Vector3(0.5, 1.5, 8.0), Vector3(8.25, 0.75, -9.0), MAT_STONE)
+	EnvAssets.wall(terrace, "TerraceEdgeW", 8.0, Vector3(8.25, 0.0, -9.0), 90.0)
 	# 계단: 5단 × (높이 0.2, 깊이 0.4) — 메시만, 충돌 없음
 	var stairs := Node3D.new()
 	stairs.name = "StairsVisual"
@@ -170,9 +170,9 @@ func _build_stairs_and_terrace() -> void:
 	ramp.position = Vector3(base.x, rise * 0.5 - 0.1, base.z + run * 0.5)
 	ramp.rotation.x = atan2(rise, run)
 	terrace.add_child(ramp)
-	# 계단 양옆 난간 덩어리 (가림/충돌)
-	_box(terrace, "StairSideE", Vector3(0.5, 1.2, 2.4), Vector3(14.85, 0.6, -3.8), MAT_STONE)
-	_box(terrace, "StairSideW", Vector3(0.5, 1.2, 2.4), Vector3(11.15, 0.6, -3.8), MAT_STONE)
+	# 계단 양옆 낮은 난간 (돌담 모듈, 계단 앞은 막지 않는다)
+	EnvAssets.wall(terrace, "StairSideE", 2.4, Vector3(14.9, 0.0, -3.8), 90.0)
+	EnvAssets.wall(terrace, "StairSideW", 2.4, Vector3(11.1, 0.0, -3.8), 90.0)
 
 
 # ---------------------------------------------------------------- 폐허 건물 (입구 1, 지붕 분리)
@@ -185,15 +185,15 @@ func _build_ruin_building() -> void:
 	var cz := -7.5
 	var w := 7.0
 	var d := 6.0
-	var h := 3.0
-	# 벽 4면, 남쪽 벽에 입구(폭 1.6)
-	_box(b, "WallN", Vector3(w, h, 0.5), Vector3(cx, h * 0.5, cz - d * 0.5), MAT_STONE)
-	_box(b, "WallW", Vector3(0.5, h, d), Vector3(cx - w * 0.5, h * 0.5, cz), MAT_STONE)
-	_box(b, "WallE", Vector3(0.5, h * 0.6, d), Vector3(cx + w * 0.5, h * 0.3, cz), MAT_STONE)  # 무너진 낮은 벽
+	var h := EnvAssets.WALL_TALL_H
+	# 벽 4면(Blender 블록 모듈), 남쪽 벽에 입구(폭 1.6)
+	EnvAssets.wall(b, "WallN", w, Vector3(cx, 0.0, cz - d * 0.5), 0.0, true)
+	EnvAssets.wall(b, "WallW", d, Vector3(cx - w * 0.5, 0.0, cz), 90.0, true)
+	EnvAssets.wall(b, "WallE", d, Vector3(cx + w * 0.5, 0.0, cz), 90.0, false)  # 무너진 낮은 벽
 	var door_w := 1.6
 	var seg := (w - door_w) * 0.5
-	_box(b, "WallS_L", Vector3(seg, h, 0.5), Vector3(cx - w * 0.5 + seg * 0.5, h * 0.5, cz + d * 0.5), MAT_STONE)
-	_box(b, "WallS_R", Vector3(seg, h, 0.5), Vector3(cx + w * 0.5 - seg * 0.5, h * 0.5, cz + d * 0.5), MAT_STONE)
+	EnvAssets.wall(b, "WallS_L", seg, Vector3(cx - w * 0.5 + seg * 0.5, 0.0, cz + d * 0.5), 0.0, true)
+	EnvAssets.wall(b, "WallS_R", seg, Vector3(cx + w * 0.5 - seg * 0.5, 0.0, cz + d * 0.5), 0.0, true)
 	_box(b, "Lintel", Vector3(door_w + 0.2, 0.6, 0.5), Vector3(cx, h - 0.3, cz + d * 0.5), MAT_STONE_LIT)
 	# 바닥
 	_box(b, "Floor", Vector3(w, 0.1, d), Vector3(cx, 0.05, cz), MAT_SLATE, false)
@@ -244,18 +244,6 @@ func _build_details() -> void:
 	var d := Node3D.new()
 	d.name = "Details"
 	add_child(d)
-	# 담 위 갓돌 (밝은 석재, 담보다 조금 넓음) — 담 실루엣 상단에 밝은 띠
-	var caps := [
-		[Vector3(12.4, 0.16, 0.8), Vector3(-8.0, 1.18, 13.0)],
-		[Vector3(10.4, 0.16, 0.8), Vector3(8.0, 1.38, 13.0)],
-		[Vector3(0.8, 0.16, 9.4), Vector3(-17.0, 1.28, 8.0)],
-		[Vector3(0.8, 0.16, 8.4), Vector3(-17.0, 1.08, -8.0)],
-		[Vector3(8.4, 0.16, 0.8), Vector3(11.0, 1.48, -2.1)],
-		[Vector3(8.4, 0.16, 0.8), Vector3(11.0, 1.08, 2.1)],
-		[Vector3(9.4, 0.16, 0.8), Vector3(-6.5, 1.28, -13.0)],
-	]
-	for i in caps.size():
-		_box(d, "Cap%d" % i, caps[i][0], caps[i][1], MAT_STONE_LIT, false)
 	# 무너져 떨어진 돌 블록 (Blender, 깎인 육면체)
 	EnvAssets.spawn(d, "block_a", Vector3(-3.0, 0.0, 11.6), 25.0)
 	EnvAssets.spawn(d, "block_b", Vector3(-1.6, 0.0, 11.2), -40.0, 0.8)
@@ -284,13 +272,11 @@ func _build_details() -> void:
 	_box(d, "PlinthBase", Vector3(1.6, 0.3, 1.6), Vector3(0.0, 0.2, -3.0), MAT_STONE_LIT)
 	_cylinder(d, "BrokenColumn", 0.42, 1.5, Vector3(0.0, 1.1, -3.0), MAT_STONE)
 	# 집: 서쪽 벽 창 구멍은 벽을 뚫는 대신 어두운 판 + 창턱으로 표현, 남쪽 입구 문설주 2개
-	_box(d, "WindowDark", Vector3(0.12, 1.0, 1.2), Vector3(-13.44, 1.7, -7.5), MAT_SLATE, false)
-	_box(d, "WindowSill", Vector3(0.3, 0.14, 1.4), Vector3(-13.5, 1.15, -7.5), MAT_STONE_LIT, false)
 	_box(d, "DoorPostL", Vector3(0.35, 2.7, 0.7), Vector3(-10.95, 1.35, -4.5), MAT_STONE_LIT)
 	_box(d, "DoorPostR", Vector3(0.35, 2.7, 0.7), Vector3(-9.05, 1.35, -4.5), MAT_STONE_LIT)
 	# 테라스 가장자리 난간 조각 2개
-	_box(d, "ParapetA", Vector3(3.0, 0.6, 0.5), Vector3(10.5, 1.3, -12.75), MAT_STONE)
-	_box(d, "ParapetB", Vector3(2.2, 0.6, 0.5), Vector3(16.2, 1.3, -12.75), MAT_STONE)
+	EnvAssets.wall(d, "ParapetA", 3.0, Vector3(10.5, 1.0, -12.75))
+	EnvAssets.wall(d, "ParapetB", 2.2, Vector3(16.2, 1.0, -12.75))
 
 
 # ---------------------------------------------------------------- 맵 경계 (보이지 않는 충돌)

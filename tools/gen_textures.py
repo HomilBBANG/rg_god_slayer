@@ -11,9 +11,9 @@ def leaf_card(path, size=32, blobs=6):
     mask = Image.new("L", (size, size), 0)
     d = ImageDraw.Draw(mask)
     for i in range(blobs):
-        r = random.uniform(size * 0.17, size * 0.26)
-        cx = size * 0.5 + random.uniform(-size * 0.18, size * 0.18)
-        cy = size * 0.5 + random.uniform(-size * 0.16, size * 0.16)
+        r = random.uniform(size * 0.24, size * 0.32)
+        cx = size * 0.5 + random.uniform(-size * 0.14, size * 0.14)
+        cy = size * 0.5 + random.uniform(-size * 0.12, size * 0.12)
         d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=255)
     px = im.load(); mp = mask.load()
     for y in range(size):
@@ -24,8 +24,6 @@ def leaf_card(path, size=32, blobs=6):
                        or not (0 <= x + dx < size and 0 <= y + dy < size)
                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
             if edge:
-                c = 150
-            elif y > size * 0.62:
                 c = 205
             else:
                 c = 255
@@ -62,8 +60,8 @@ def flower(path, size=8):
     px[2, 5] = (120, 170, 90, 255)
     im.save(OUT + path)
 
-leaf_card("leaf_card.png")
-random.seed(5); leaf_card("leaf_card_b.png", blobs=5)
+leaf_card("leaf_card.png", blobs=3)
+random.seed(5); leaf_card("leaf_card_b.png", blobs=3)
 random.seed(21); grass_card("grass_card.png")
 flower("flower.png")
 print("textures written")

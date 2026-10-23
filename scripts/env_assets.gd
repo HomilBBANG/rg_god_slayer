@@ -16,7 +16,15 @@ const SCENES := {
 	"pillar_b": preload("res://assets/environment/pillar_b.glb"),
 	"block_a": preload("res://assets/environment/block_a.glb"),
 	"block_b": preload("res://assets/environment/block_b.glb"),
+	"wall_low_a": preload("res://assets/environment/wall_low_a.glb"),
+	"wall_low_b": preload("res://assets/environment/wall_low_b.glb"),
+	"wall_low_c": preload("res://assets/environment/wall_low_c.glb"),
+	"wall_tall_a": preload("res://assets/environment/wall_tall_a.glb"),
+	"wall_tall_b": preload("res://assets/environment/wall_tall_b.glb"),
 }
+const WALL_SEG_LEN := 2.0
+const WALL_LOW_H := 1.1
+const WALL_TALL_H := 2.75
 
 ## glTF 머티리얼 이름 → 셰이더 머티리얼
 const MATERIALS := {
@@ -43,6 +51,42 @@ static func spawn(parent: Node, kind: String, pos: Vector3, yaw_deg: float = 0.0
 	if collide:
 		_add_collision(inst, kind)
 	return inst
+
+
+## 돌담: 박스 충돌 1개 + 2 m 블록 모듈을 길이만큼 타일. tall=true 면 5줄(2.75 m) 담.
+## yaw 는 담의 길이 축(+X) 회전. 마지막 토막은 남은 길이에 맞춰 x 스케일.
+static func wall(parent: Node, n: String, length: float, pos: Vector3, yaw_deg: float = 0.0, tall: bool = false, seed_value: int = 0) -> StaticBody3D:
+	var h := WALL_TALL_H if tall else WALL_LOW_H
+	var body := StaticBody3D.new()
+	body.name = n
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	body.position = pos
+	body.rotation_degrees.y = yaw_deg
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(length, h, 0.6)
+	shape.shape = box
+	shape.position = Vector3(0.0, h * 0.5, 0.0)
+	body.add_child(shape)
+	parent.add_child(body)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(n) + seed_value
+	var variants := ["wall_tall_a", "wall_tall_b"] if tall else ["wall_low_a", "wall_low_b", "wall_low_c"]
+	var x := -length * 0.5
+	while x < length - 0.01 - length * 0.5:
+		var seg_len := minf(WALL_SEG_LEN, length * 0.5 - x)
+		var kind: String = variants[rng.randi() % variants.size()]
+		var inst := SCENES[kind].instantiate() as Node3D
+		inst.name = "Seg%d" % int((x + length * 0.5) / WALL_SEG_LEN)
+		inst.position = Vector3(x + seg_len * 0.5, 0.0, 0.0)
+		# 짝수 토막은 뒤집어 반복 패턴을 흐린다
+		inst.rotation_degrees.y = 180.0 if rng.randf() < 0.5 else 0.0
+		inst.scale = Vector3(seg_len / WALL_SEG_LEN, 1.0, 1.0)
+		body.add_child(inst)
+		_apply_materials(inst)
+		x += seg_len
+	return body
 
 
 static func _apply_materials(node: Node) -> void:

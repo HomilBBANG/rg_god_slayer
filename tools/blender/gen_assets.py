@@ -129,7 +129,7 @@ def canopy_normal(p, spheres):
     return n.normalized() if n.length > 1e-6 else Vector((0, 0, 1))
 
 
-def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.55, 0.8), shell=(-0.45, 0.05), min_dist=0.26, inner=60):
+def make_tree(name, seed, height=1.7, spheres=None, card_size=(0.95, 1.3), shell=(-0.55, 0.05), min_dist=0.5, inner=70):
     random.seed(seed)
     # 줄기: 7각 테이퍼 실린더, 살짝 기울임
     bm = bmesh.new()
@@ -309,6 +309,37 @@ def make_block(name, seed, size=(1.2, 0.8, 0.6)):
     return ob
 
 
+# ------------------------------------------------------------------ 돌담 모듈 (길이 2 m, x ∈ [-1, 1], 두께 0.6)
+
+def make_wall(name, seed, rows=2, row_h=0.55, length=2.0, thick=0.6, missing=0.15):
+    """깎인 돌 블록을 엇갈려 쌓은 담 한 토막. 윗줄 블록은 일부 빠져 폐허 느낌."""
+    random.seed(seed)
+    bm = bmesh.new()
+    x0 = -length * 0.5
+    for r in range(rows):
+        z = r * row_h
+        offset = 0.0 if r % 2 == 0 else 0.45
+        x = x0 - offset
+        while x < length * 0.5 - 0.05:
+            w = random.uniform(0.6, 1.0)
+            x1 = min(x + w, length * 0.5)
+            if x1 - x > 0.2:
+                top_row = r == rows - 1
+                if not (top_row and random.random() < missing):
+                    h = row_h * (random.uniform(0.75, 1.0) if top_row else 1.0)
+                    chipped_block(bm, (x1 - x, thick, h), Vector(((x + x1) * 0.5, 0.0, z + h * 0.5)), chip=0.07)
+            x = x1 + 0.02
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = False
+    me.materials.append(material("Stone"))
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
 # ------------------------------------------------------------------ 내보내기
 
 def export(path):
@@ -326,7 +357,7 @@ def build(fn, filename, *args, **kwargs):
 
 
 build(make_tree, "tree_a.glb", "tree_a", 1)
-build(make_tree, "tree_b.glb", "tree_b", 2, height=1.5, card_size=(0.5, 0.72))
+build(make_tree, "tree_b.glb", "tree_b", 2, height=1.5, card_size=(0.9, 1.3))
 build(make_rock, "rock_a.glb", "rock_a", 11, scale=(1.0, 0.85, 0.75))
 build(make_rock, "rock_b.glb", "rock_b", 12, scale=(1.3, 0.9, 0.6), amp=0.22)
 build(make_rock, "rock_c.glb", "rock_c", 13, scale=(0.8, 0.7, 0.9), amp=0.32)
@@ -337,4 +368,9 @@ build(make_pillar, "pillar_a.glb", "pillar_a", 31, blocks=5)
 build(make_pillar, "pillar_b.glb", "pillar_b", 32, blocks=3, broken_top=True)
 build(make_block, "block_a.glb", "block_a", 41)
 build(make_block, "block_b.glb", "block_b", 42, size=(0.8, 0.8, 0.8))
+build(make_wall, "wall_low_a.glb", "wall_low_a", 51, rows=2)
+build(make_wall, "wall_low_b.glb", "wall_low_b", 52, rows=2)
+build(make_wall, "wall_low_c.glb", "wall_low_c", 53, rows=2, missing=0.45)
+build(make_wall, "wall_tall_a.glb", "wall_tall_a", 61, rows=5, missing=0.1)
+build(make_wall, "wall_tall_b.glb", "wall_tall_b", 62, rows=5, missing=0.3)
 print("[gen_assets] done")
