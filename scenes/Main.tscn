@@ -31,14 +31,35 @@ dof_blur_far_enabled = false
 dof_blur_near_enabled = false
 auto_exposure_enabled = false
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node"]
 script = ExtResource("1_main")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="PixelCanvas" type="CanvasLayer" parent="."]
+layer = 0
+
+[node name="PixelScreen" type="TextureRect" parent="PixelCanvas"]
+texture_filter = 1
+offset_left = -6.0
+offset_top = -6.0
+offset_right = 1926.0
+offset_bottom = 1086.0
+expand_mode = 1
+stretch_mode = 0
+
+[node name="World" type="SubViewport" parent="."]
+own_world_3d = true
+handle_input_locally = false
+msaa_3d = 0
+screen_space_aa = 0
+positional_shadow_atlas_size = 1024
+size = Vector2i(644, 364)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="World"]
 environment = SubResource("Environment_main")
 camera_attributes = SubResource("CameraAttributes_main")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="World"]
 transform = Transform3D(0.819152, 0.383022, -0.426552, 0, 0.743145, 0.66913, 0.573576, -0.548125, 0.608762, 0, 12, 0)
 light_color = Color(0.98, 0.93, 0.8, 1)
 light_energy = 1.0
@@ -48,23 +69,24 @@ shadow_normal_bias = 1.5
 directional_shadow_mode = 0
 directional_shadow_max_distance = 60.0
 
-[node name="TestCourtyard" parent="." instance=ExtResource("2_courtyard")]
+[node name="TestCourtyard" parent="World" instance=ExtResource("2_courtyard")]
 
-[node name="Player" parent="." instance=ExtResource("3_player")]
+[node name="Player" parent="World" instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
 
-[node name="HitDummies" type="Node3D" parent="."]
+[node name="HitDummies" type="Node3D" parent="World"]
 
-[node name="HitDummy01" parent="HitDummies" instance=ExtResource("4_dummy")]
+[node name="HitDummy01" parent="World/HitDummies" instance=ExtResource("4_dummy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 3.5)
 
-[node name="HitDummy02" parent="HitDummies" instance=ExtResource("4_dummy")]
+[node name="HitDummy02" parent="World/HitDummies" instance=ExtResource("4_dummy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1, -9.5)
 
-[node name="CameraRig" parent="." instance=ExtResource("5_rig")]
+[node name="CameraRig" parent="World" instance=ExtResource("5_rig")]
 target_path = NodePath("../Player")
 
 [node name="HUD" parent="." instance=ExtResource("6_hud")]
-player_path = NodePath("../Player")
-camera_rig_path = NodePath("../CameraRig")
-sun_path = NodePath("../DirectionalLight3D")
+layer = 1
+player_path = NodePath("../World/Player")
+camera_rig_path = NodePath("../World/CameraRig")
+sun_path = NodePath("../World/DirectionalLight3D")

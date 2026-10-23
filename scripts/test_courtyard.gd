@@ -26,6 +26,7 @@ func _ready() -> void:
 	_build_ruin_building()
 	_build_trees()
 	_build_shadow_pillar()
+	_build_details()
 	_build_boundary()
 
 
@@ -247,6 +248,52 @@ func _build_shadow_pillar() -> void:
 	_box(self, "ArchPostA", Vector3(0.8, 4.5, 0.8), Vector3(3.0, 2.25, 6.0), MAT_STONE)
 	_box(self, "ArchPostB", Vector3(0.8, 4.5, 0.8), Vector3(7.0, 2.25, 6.0), MAT_STONE)
 	_box(self, "ArchBeam", Vector3(5.2, 0.7, 1.0), Vector3(5.0, 4.6, 6.0), MAT_STONE_LIT, false)
+
+
+# ---------------------------------------------------------------- 디테일 (큰 덩어리만, 소품 금지 원칙 유지)
+
+## 돌담 갓돌, 무너진 돌덩이, 광장 중앙 부서진 기둥, 집 창 구멍/문설주, 나뭇가지.
+## 저해상도 픽셀 에지가 면을 분리해 주므로 덩어리 수는 적게, 높이 차는 또렷하게.
+func _build_details() -> void:
+	var d := Node3D.new()
+	d.name = "Details"
+	add_child(d)
+	# 담 위 갓돌 (밝은 석재, 담보다 조금 넓음) — 담 실루엣 상단에 밝은 띠
+	var caps := [
+		[Vector3(12.4, 0.16, 0.8), Vector3(-8.0, 1.18, 13.0)],
+		[Vector3(10.4, 0.16, 0.8), Vector3(8.0, 1.38, 13.0)],
+		[Vector3(0.8, 0.16, 9.4), Vector3(-17.0, 1.28, 8.0)],
+		[Vector3(0.8, 0.16, 8.4), Vector3(-17.0, 1.08, -8.0)],
+		[Vector3(8.4, 0.16, 0.8), Vector3(11.0, 1.48, -2.1)],
+		[Vector3(8.4, 0.16, 0.8), Vector3(11.0, 1.08, 2.1)],
+		[Vector3(9.4, 0.16, 0.8), Vector3(-6.5, 1.28, -13.0)],
+	]
+	for i in caps.size():
+		_box(d, "Cap%d" % i, caps[i][0], caps[i][1], MAT_STONE_LIT, false)
+	# 무너져 떨어진 돌덩이 4개 (충돌 있음)
+	_box(d, "Rubble1", Vector3(1.3, 0.7, 0.9), Vector3(-3.0, 0.35, 11.6), MAT_STONE, true, 25.0)
+	_box(d, "Rubble2", Vector3(0.9, 0.5, 0.9), Vector3(-1.6, 0.25, 11.2), MAT_STONE_LIT, true, -40.0)
+	_box(d, "Rubble3", Vector3(1.1, 0.6, 1.4), Vector3(5.6, 0.3, -3.6), MAT_STONE, true, 60.0)
+	_box(d, "Rubble4", Vector3(1.6, 0.45, 1.0), Vector3(-14.5, 0.22, -5.5), MAT_STONE_LIT, true, 15.0)
+	# 광장 중앙 부서진 기둥 (받침 + 짧은 기둥)
+	_box(d, "PlinthBase", Vector3(1.6, 0.3, 1.6), Vector3(0.0, 0.2, -3.0), MAT_STONE_LIT)
+	_cylinder(d, "BrokenColumn", 0.42, 1.5, Vector3(0.0, 1.1, -3.0), MAT_STONE)
+	# 집: 서쪽 벽 창 구멍은 벽을 뚫는 대신 어두운 판 + 창턱으로 표현, 남쪽 입구 문설주 2개
+	_box(d, "WindowDark", Vector3(0.12, 1.0, 1.2), Vector3(-13.44, 1.7, -7.5), MAT_SLATE, false)
+	_box(d, "WindowSill", Vector3(0.3, 0.14, 1.4), Vector3(-13.5, 1.15, -7.5), MAT_STONE_LIT, false)
+	_box(d, "DoorPostL", Vector3(0.35, 2.7, 0.7), Vector3(-10.95, 1.35, -4.5), MAT_STONE_LIT)
+	_box(d, "DoorPostR", Vector3(0.35, 2.7, 0.7), Vector3(-9.05, 1.35, -4.5), MAT_STONE_LIT)
+	# 테라스 가장자리 난간 조각 2개
+	_box(d, "ParapetA", Vector3(3.0, 0.6, 0.5), Vector3(10.5, 1.3, -12.75), MAT_STONE)
+	_box(d, "ParapetB", Vector3(2.2, 0.6, 0.5), Vector3(16.2, 1.3, -12.75), MAT_STONE)
+	# 나뭇가지 (수관 아래 짧은 가지 — 실루엣 변화)
+	for t in get_node("Trees").get_children():
+		var trunk := t.get_node("Trunk") as Node3D
+		var h: float = (trunk.get_node("Mesh") as MeshInstance3D).mesh.height
+		var b1 := _cylinder(t, "Branch1", 0.1, 1.2, Vector3(0.45, h * 0.78, 0.1), MAT_SLATE, false)
+		b1.rotation_degrees = Vector3(0.0, 0.0, -55.0)
+		var b2 := _cylinder(t, "Branch2", 0.08, 0.9, Vector3(-0.3, h * 0.68, -0.3), MAT_SLATE, false)
+		b2.rotation_degrees = Vector3(40.0, 0.0, 45.0)
 
 
 # ---------------------------------------------------------------- 맵 경계 (보이지 않는 충돌)

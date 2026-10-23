@@ -14,7 +14,7 @@ func _initialize() -> void:
 	_main = packed.instantiate()
 	root.add_child(_main)
 	current_scene = _main
-	_player = _main.get_node("Player")
+	_player = _main.get_node("World/Player")
 	print("[runner] main scene loaded")
 
 func _process(_delta: float) -> bool:
@@ -57,8 +57,8 @@ func _process(_delta: float) -> bool:
 				_attack_captured = true
 				_cap("03_attack.png")
 			if _frames - _frames_attack == 30:
-				var d = _main.get_node("HitDummies/HitDummy01")
-				print("[runner] dummy01 hit_count=%d  dummy02 hit_count=%d" % [d.hit_count, _main.get_node("HitDummies/HitDummy02").hit_count])
+				var d = _main.get_node("World/HitDummies/HitDummy01")
+				print("[runner] dummy01 hit_count=%d  dummy02 hit_count=%d" % [d.hit_count, _main.get_node("World/HitDummies/HitDummy02").hit_count])
 				_step = 6
 		6:
 			_main.get_node("HUD").set_debug_visible(true); _step = 7
@@ -105,6 +105,40 @@ func _process(_delta: float) -> bool:
 				print("[runner] stairs test: player pos=%s (expect y≈1.0 on terrace)" % p)
 				_step = 16
 		16:
+			# 회피 테스트 1: 입력 없이 Shift → 시선 반대 방향으로 이동, 시선 유지
+			_player.global_position = Vector3(0.0, 0.3, 0.0)
+			_player.velocity = Vector3.ZERO
+			_player.facing = Vector3(0, 0, -1)
+			_step = 17; _frames_attack = _frames
+		17:
+			if _frames - _frames_attack == 5:
+				Input.action_press("dodge")
+			elif _frames - _frames_attack == 6:
+				Input.action_release("dodge")
+			if _frames - _frames_attack == 7:
+				_cap("09_dodge_back.png")
+			if _frames - _frames_attack > 60:
+				var p: Vector3 = _player.global_position
+				print("[runner] backstep: pos=%s facing=%s (expect z>0 ≈ +2.6, facing still (0,0,-1))" % [p, _player.facing])
+				_step = 18; _frames_attack = _frames
+		18:
+			# 회피 테스트 2: ← 누른 채 Shift → 화면 왼쪽(월드 -x,+z)으로 점프하며 그쪽을 본다
+			_player.global_position = Vector3(0.0, 0.3, 0.0)
+			_player.velocity = Vector3.ZERO
+			Input.action_press("move_left")
+			_step = 19; _frames_attack = _frames
+		19:
+			if _frames - _frames_attack == 3:
+				Input.action_press("dodge")
+			elif _frames - _frames_attack == 4:
+				Input.action_release("dodge"); Input.action_release("move_left")
+			if _frames - _frames_attack == 5:
+				_cap("10_dodge_left.png")
+			if _frames - _frames_attack > 60:
+				var p: Vector3 = _player.global_position
+				print("[runner] dodge-left: pos=%s facing=%s (expect x<0,z>0 ; facing ≈ (-0.71,0,0.71))" % [p, _player.facing])
+				_step = 20
+		20:
 			print("[runner] done, frames=%d" % _frames)
 			quit(0)
 			return true
@@ -114,7 +148,7 @@ var _frames_attack: int = 0
 var _attack_captured: bool = false
 
 func _drive_toward(to: Vector3) -> void:
-	var rig = _main.get_node("CameraRig")
+	var rig = _main.get_node("World/CameraRig")
 	var r: Vector3 = rig.screen_right()
 	var u: Vector3 = rig.screen_up()
 	var sx := to.dot(r); var sy := to.dot(u)

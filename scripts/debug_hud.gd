@@ -56,19 +56,19 @@ func _build_debug_text() -> String:
 		lines.append("char px @1080p ≈ %.0f" % _character_pixel_height())
 	if _rig:
 		lines.append("camera ortho size %.1f  elev %.0f°  az %.0f°  dist %.0fm" % [_rig.ortho_size, _rig.elevation_deg, _rig.azimuth_deg, _rig.distance])
+		lines.append("pixel scale %d  render %s  texel %.3fm  subpixel %s" % [_rig.pixel_scale, _rig.render_size(), _rig.texel_size, _rig.subpixel_offset])
 	if _sun:
 		var e := _sun.rotation_degrees
 		lines.append("sun rot (%.0f, %.0f, %.0f)  energy %.2f  [F2 cycle]" % [e.x, e.y, e.z, _sun.light_energy])
-	lines.append("F1 debug  F2 light preset  F12 screenshot (user://captures)")
+	lines.append("F1 debug  F2 light preset  F11 fullscreen  F12 screenshot (user://captures)")
 	return "\n".join(lines)
 
 
-## 1.70m 인물이 1080p에서 차지하는 픽셀 높이 — 발과 정수리를 실제로 투영해 측정
+## 1.70m 인물이 1080p에서 차지하는 픽셀 높이 — 저해상도 뷰포트에서 발/정수리를 투영(텍셀)한 뒤 배율을 곱한다
 func _character_pixel_height() -> float:
 	if _player == null or _rig == null:
 		return 0.0
 	var cam := _rig.camera
 	var foot := cam.unproject_position(_player.global_position)
 	var head := cam.unproject_position(_player.global_position + Vector3(0, 1.70, 0))
-	var vp_h := get_viewport().get_visible_rect().size.y
-	return absf(foot.y - head.y) * (1080.0 / maxf(vp_h, 1.0))
+	return absf(foot.y - head.y) * float(_rig.pixel_scale)

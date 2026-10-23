@@ -1,6 +1,21 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera_follow.gd" id="1_script"]
+[ext_resource type="Shader" path="res://shaders/RED_PixelEdge.gdshader" id="2_edge"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_edge"]
+render_priority = -128
+shader = ExtResource("2_edge")
+shader_parameter/depth_threshold = 0.22
+shader_parameter/edge_darken = 0.55
+shader_parameter/normal_threshold = 0.35
+shader_parameter/edge_lighten = 0.12
+shader_parameter/highlight_up_bias = 0.15
+
+[sub_resource type="QuadMesh" id="QuadMesh_fullscreen"]
+material = SubResource("ShaderMaterial_edge")
+flip_faces = true
+size = Vector2(2, 2)
 
 [node name="CameraRig" type="Node3D" groups=["camera_rig"]]
 script = ExtResource("1_script")
@@ -11,3 +26,9 @@ projection = 1
 size = 15.0
 near = 0.1
 far = 100.0
+
+[node name="PixelEdge" type="MeshInstance3D" parent="Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
+extra_cull_margin = 16384.0
+cast_shadow = 0
+mesh = SubResource("QuadMesh_fullscreen")
