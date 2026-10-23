@@ -52,6 +52,7 @@ const MATERIALS := {
 	"Belt": preload("res://materials/mat_belt.tres"),
 	"Buckle": preload("res://materials/mat_buckle.tres"),
 	"Shoe": preload("res://materials/mat_shoe.tres"),
+	"CharTex": preload("res://materials/mat_char.tres"),
 }
 
 const LAYER_WORLD := 1

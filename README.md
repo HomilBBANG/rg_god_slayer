@@ -43,12 +43,12 @@ game/
 ├─ project.godot
 ├─ scenes/
 │  ├─ Main.tscn            # PixelScreen(TextureRect) ← World(SubViewport 644×364): 환경/광원/맵/플레이어/더미/카메라, HUD
-│  ├─ Player.tscn          # CharacterBody3D + Blender 로우폴리 모델 (player_red.glb, 6등신 1.70 m, 이목구비 없음)
+│  ├─ Player.tscn          # CharacterBody3D + 리깅된 캐릭터 모델 (assets/character/player_rigged.glb)
 │  ├─ CameraRig.tscn       # Node3D + Camera3D (직교, 고정각)
 │  ├─ TestCourtyard.tscn   # 스크립트가 런타임에 프리미티브로 맵을 조립
 │  └─ HitDummy.tscn        # StaticBody3D, 그룹 attack_targets, receive_hit()
 ├─ scripts/
-│  ├─ player_controller.gd # 이동/방향/공격/회피 상태 + 절차 애니메이션(Idle/Walk/Attack/Dodge)
+│  ├─ player_controller.gd # 이동/방향/공격/회피 상태 + Skeleton3D 뼈 포즈 절차 애니메이션(Idle/Walk/Attack/Dodge)
 │  ├─ camera_follow.gd     # elevation 52°, azimuth 45°, distance 25 m, size 15, 지수 보간 추적, 텍셀 스냅
 │  ├─ hit_dummy.gd         # 피격 카운터 + 0.1 s 기울임 반응
 │  ├─ debug_hud.gd         # 체력 바, 조작 안내(10 s), F1 디버그
@@ -146,6 +146,22 @@ GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.
 
 이동 3.4 m/s, 가속 12 m/s², 감속 18 m/s², 중력 9.8, 회전 보간 14/s.
 공격 0.38 s (준비 0~0.10, 유효 0.10~0.19, 복귀 ~0.38), 사거리 1.45 m + 더미 반경, 전방 100°, 공격 중 이동 40%, 한 공격당 더미 1회 타격.
+
+## 플레이어 캐릭터 (외부 모델 + 직접 리깅)
+
+`assets/character/player_rigged.glb` — 사용자가 제공한 스타일라이즈드 여성 캐릭터(Tripo 생성, 94만 tri, 무리깅)를 `tools/blender/rig_player.py` 로 처리한 것.
+
+```
+blender -b -P tools/blender/rig_player.py -- <원본.glb> assets/character
+```
+
+1. 1.70 m 스케일, 발바닥 z=0, 정면을 Godot −Z 로 회전
+2. Decimate(collapse) → **9,000 tri** (UV 유지)
+3. 휴머노이드 아마추어 19본: `Hips/Spine/Chest/Neck/Head`, `Shoulder/UpperArm/LowerArm/Hand .L/.R`, `UpperLeg/LowerLeg/Foot .L/.R` — 키 비율 휴리스틱으로 배치
+4. 정점 가중치: 각 뼈 선분까지의 거리 기반 역거리 가중(최대 3본). 비매니폴드 메시에서 Heat 가 실패하는 문제를 피하려고 직접 계산
+5. 베이스컬러 1024 PNG 별도 저장(`player_basecolor.png`), 머티리얼 `CharTex` → `mat_char.tres`(`RED_FlatLitTex`: 텍스처 × 밴드 조명, 채도 0.9)
+
+애니메이션은 AnimationPlayer 없이 `player_controller.gd` 가 매 틱 `Skeleton3D.set_bone_pose_rotation/position` 으로 구동합니다. 회전은 **모델 공간 오일러**로 쓰고 `_pose()` 가 `rest_global⁻¹ · R · rest_global` 로 뼈 로컬에 옮기므로 뼈 롤을 신경 쓰지 않아도 됩니다 (부모 뼈 움직임은 자동 상속). 이전 박스/로우폴리 모델(`assets/environment/player_red.glb`)은 남겨 두었습니다.
 
 ## 환경 에셋 (Blender 절차 생성)
 

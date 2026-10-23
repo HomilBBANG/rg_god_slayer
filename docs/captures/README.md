@@ -14,6 +14,7 @@
 | 10_dodge_left.png | ← + Shift — 왼쪽으로 몸을 던지는 점프 |
 | 11_no_shafts_no_grass.png | 갓레이·잔디 OFF (비교용) |
 | 12_shafts_grass.png | 갓레이·잔디 ON — 셸 볼류메트릭, LIGHT_VERTEX 잔디, 구름 그림자 |
-| 13_character_closeup.png | 주인공 로우폴리 모델 클로즈업 (Idle / Walk / Attack / Dodge, 320px 영역 ×2 확대) |
+| 13_character_closeup.png | 리깅된 주인공 클로즈업 (Idle / Walk / Attack / Dodge, 320px 영역 ×2 확대) |
+| 14_source_model_front.png | 제공받은 원본 모델 Blender 프리뷰 (리깅 전) |
 
 재생성: `godot --path game -s tools/capture_runner.gd` → `user://captures/`
