@@ -1,0 +1,279 @@
+## 테스트 맵 — 돌담이 있는 폐허 마을 안뜰 (GDD §8)
+## 약 36×28m. 모든 환경 메시는 기본 프리미티브(Box/Cylinder/Plane)를 RED_FlatLit 머티리얼로 그린다.
+## 텍스처/소품/풀 없음. 큰 색면만으로 공간을 읽게 하는 것이 목적.
+##
+## 동선: 중앙 광장(원점) → 동쪽 좁은 돌담 통로 → 북동쪽 계단/단차 → 공격 더미 공간
+## 충돌 테스트: 돌담 다수, 계단(램프 충돌) 1개, 건물 모서리/입구.
+extends Node3D
+
+const MAT_STONE := preload("res://materials/mat_stone.tres")
+const MAT_STONE_LIT := preload("res://materials/mat_stone_lit.tres")
+const MAT_GROUND := preload("res://materials/mat_ground.tres")
+const MAT_OLIVE := preload("res://materials/mat_olive.tres")
+const MAT_OLIVE_LIGHT := preload("res://materials/mat_olive_light.tres")
+const MAT_SLATE := preload("res://materials/mat_slate.tres")
+
+const LAYER_WORLD := 1
+
+var roof: Node3D
+
+
+func _ready() -> void:
+	_build_ground()
+	_build_plaza()
+	_build_walls()
+	_build_stairs_and_terrace()
+	_build_ruin_building()
+	_build_trees()
+	_build_shadow_pillar()
+	_build_boundary()
+
+
+# ---------------------------------------------------------------- helpers
+
+func _box(parent: Node, n: String, size: Vector3, pos: Vector3, mat: Material, collide: bool = true, yaw_deg: float = 0.0) -> Node3D:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	var mi := MeshInstance3D.new()
+	mi.name = n
+	mi.mesh = mesh
+	mi.material_override = mat
+	if collide:
+		var body := StaticBody3D.new()
+		body.name = n
+		body.collision_layer = LAYER_WORLD
+		body.collision_mask = 0
+		body.position = pos
+		body.rotation_degrees.y = yaw_deg
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = size
+		shape.shape = box
+		mi.name = "Mesh"
+		body.add_child(mi)
+		body.add_child(shape)
+		parent.add_child(body)
+		return body
+	mi.position = pos
+	mi.rotation_degrees.y = yaw_deg
+	parent.add_child(mi)
+	return mi
+
+
+func _cylinder(parent: Node, n: String, radius: float, height: float, pos: Vector3, mat: Material, collide: bool = true) -> Node3D:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius * 1.15
+	mesh.height = height
+	mesh.radial_segments = 7
+	mesh.rings = 1
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	if collide:
+		var body := StaticBody3D.new()
+		body.name = n
+		body.collision_layer = LAYER_WORLD
+		body.collision_mask = 0
+		body.position = pos
+		var shape := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = radius * 1.05
+		cyl.height = height
+		shape.shape = cyl
+		mi.name = "Mesh"
+		body.add_child(mi)
+		body.add_child(shape)
+		parent.add_child(body)
+		return body
+	mi.name = n
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
+
+
+# ---------------------------------------------------------------- 지면
+
+func _build_ground() -> void:
+	# 바깥 올리브 지면(카메라 경계 밖이 비어 보이지 않도록 넉넉히)
+	var outer := _box(self, "GroundOuter", Vector3(80.0, 0.2, 80.0), Vector3(0.0, -0.1, 0.0), MAT_OLIVE)
+	outer.name = "GroundOuter"
+	# 플레이 영역 흙바닥 36×28
+	_box(self, "GroundDust", Vector3(36.0, 0.06, 28.0), Vector3(0.0, 0.0, 0.0), MAT_GROUND, false)
+	# 큼직한 풀 색면 (디테일 없이 큰 덩어리 2개)
+	_box(self, "GrassPatchW", Vector3(9.0, 0.05, 11.0), Vector3(-12.5, 0.02, 4.0), MAT_OLIVE_LIGHT, false)
+	_box(self, "GrassPatchS", Vector3(14.0, 0.05, 6.0), Vector3(3.0, 0.02, 10.5), MAT_OLIVE_LIGHT, false)
+
+
+# ---------------------------------------------------------------- 중앙 광장 돌길
+
+func _build_plaza() -> void:
+	# 큰 바닥 돌길 3장 (얇은 판)
+	_box(self, "Flagstone1", Vector3(7.0, 0.08, 7.0), Vector3(0.0, 0.05, 0.0), MAT_STONE_LIT, false)
+	_box(self, "Flagstone2", Vector3(3.0, 0.08, 9.0), Vector3(7.0, 0.05, -1.0), MAT_STONE_LIT, false, 90.0)
+	_box(self, "Flagstone3", Vector3(2.6, 0.08, 6.0), Vector3(0.0, 0.05, -7.5), MAT_STONE_LIT, false)
+
+
+# ---------------------------------------------------------------- 돌담 (모듈 6개)
+
+func _build_walls() -> void:
+	var walls := Node3D.new()
+	walls.name = "Walls"
+	add_child(walls)
+	# 남쪽 긴 담
+	_box(walls, "WallS1", Vector3(12.0, 1.1, 0.6), Vector3(-8.0, 0.55, 13.0), MAT_STONE)
+	_box(walls, "WallS2", Vector3(10.0, 1.3, 0.6), Vector3(8.0, 0.65, 13.0), MAT_STONE)
+	# 서쪽 담 (틈 하나)
+	_box(walls, "WallW1", Vector3(0.6, 1.2, 9.0), Vector3(-17.0, 0.6, 8.0), MAT_STONE)
+	_box(walls, "WallW2", Vector3(0.6, 1.0, 8.0), Vector3(-17.0, 0.5, -8.0), MAT_STONE)
+	# 동쪽 좁은 통로를 만드는 담 두 줄 (통로 폭 2.2m)
+	_box(walls, "CorridorN", Vector3(8.0, 1.4, 0.6), Vector3(11.0, 0.7, -2.1), MAT_STONE)
+	_box(walls, "CorridorS", Vector3(8.0, 1.0, 0.6), Vector3(11.0, 0.5, 2.1), MAT_STONE)
+	# 북쪽 짧은 담 + 모서리 기둥
+	_box(walls, "WallN1", Vector3(9.0, 1.2, 0.6), Vector3(-6.5, 0.6, -13.0), MAT_STONE)
+	_box(walls, "PostN", Vector3(0.9, 1.7, 0.9), Vector3(-1.6, 0.85, -13.0), MAT_STONE_LIT)
+
+
+# ---------------------------------------------------------------- 계단 + 단차 (보이는 계단 ≠ 충돌 램프)
+
+func _build_stairs_and_terrace() -> void:
+	var terrace := Node3D.new()
+	terrace.name = "Terrace"
+	add_child(terrace)
+	# 북동 단차: 1.0m 높이 테라스 (더미 공간)
+	_box(terrace, "TerraceTop", Vector3(10.0, 1.0, 8.0), Vector3(13.0, 0.5, -9.0), MAT_STONE_LIT)
+	_box(terrace, "TerraceEdgeW", Vector3(0.5, 1.5, 8.0), Vector3(8.25, 0.75, -9.0), MAT_STONE)
+	# 계단: 5단 × (높이 0.2, 깊이 0.4) — 메시만, 충돌 없음
+	var stairs := Node3D.new()
+	stairs.name = "StairsVisual"
+	terrace.add_child(stairs)
+	var base := Vector3(13.0, 0.0, -5.0)   # 테라스 남쪽 면에서 남쪽(+Z)으로 내려옴
+	for i in 5:
+		var h := 0.2 * (i + 1)
+		var z := base.z + 2.0 - 0.4 * (i + 0.5)
+		_box(stairs, "Step%d" % i, Vector3(3.2, h, 0.4), Vector3(base.x, h * 0.5, z), MAT_STONE_LIT, false)
+	# 충돌용 완만한 램프 (26.57°)
+	var ramp := StaticBody3D.new()
+	ramp.name = "StairsRamp"
+	ramp.collision_layer = LAYER_WORLD
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	var run := 2.0
+	var rise := 1.0
+	box.size = Vector3(3.2, 0.2, sqrt(run * run + rise * rise))
+	shape.shape = box
+	ramp.add_child(shape)
+	ramp.position = Vector3(base.x, rise * 0.5 - 0.1, base.z + run * 0.5)
+	ramp.rotation.x = atan2(rise, run)
+	terrace.add_child(ramp)
+	# 계단 양옆 난간 덩어리 (가림/충돌)
+	_box(terrace, "StairSideE", Vector3(0.5, 1.2, 2.4), Vector3(14.85, 0.6, -3.8), MAT_STONE)
+	_box(terrace, "StairSideW", Vector3(0.5, 1.2, 2.4), Vector3(11.15, 0.6, -3.8), MAT_STONE)
+
+
+# ---------------------------------------------------------------- 폐허 건물 (입구 1, 지붕 분리)
+
+func _build_ruin_building() -> void:
+	var b := Node3D.new()
+	b.name = "RuinHouse"
+	add_child(b)
+	var cx := -10.0
+	var cz := -7.5
+	var w := 7.0
+	var d := 6.0
+	var h := 3.0
+	# 벽 4면, 남쪽 벽에 입구(폭 1.6)
+	_box(b, "WallN", Vector3(w, h, 0.5), Vector3(cx, h * 0.5, cz - d * 0.5), MAT_STONE)
+	_box(b, "WallW", Vector3(0.5, h, d), Vector3(cx - w * 0.5, h * 0.5, cz), MAT_STONE)
+	_box(b, "WallE", Vector3(0.5, h * 0.6, d), Vector3(cx + w * 0.5, h * 0.3, cz), MAT_STONE)  # 무너진 낮은 벽
+	var door_w := 1.6
+	var seg := (w - door_w) * 0.5
+	_box(b, "WallS_L", Vector3(seg, h, 0.5), Vector3(cx - w * 0.5 + seg * 0.5, h * 0.5, cz + d * 0.5), MAT_STONE)
+	_box(b, "WallS_R", Vector3(seg, h, 0.5), Vector3(cx + w * 0.5 - seg * 0.5, h * 0.5, cz + d * 0.5), MAT_STONE)
+	_box(b, "Lintel", Vector3(door_w + 0.2, 0.6, 0.5), Vector3(cx, h - 0.3, cz + d * 0.5), MAT_STONE_LIT)
+	# 바닥
+	_box(b, "Floor", Vector3(w, 0.1, d), Vector3(cx, 0.05, cz), MAT_SLATE, false)
+	# 지붕 — 별도 노드. 플레이어가 안에 들어가면 숨긴다 (GDD §8 가림 처리 1차 추천)
+	roof = _box(b, "Roof", Vector3(w + 0.8, 0.35, d + 0.8), Vector3(cx, h + 0.17, cz), MAT_SLATE, false)
+	# 지붕 트리거
+	var area := Area3D.new()
+	area.name = "RoofTrigger"
+	area.collision_layer = 0
+	area.collision_mask = 2  # Player
+	area.position = Vector3(cx, h * 0.5, cz)
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(w - 0.6, h, d - 0.6)
+	cs.shape = bs
+	area.add_child(cs)
+	area.body_entered.connect(func(_body): roof.visible = false)
+	area.body_exited.connect(func(_body): roof.visible = true)
+	b.add_child(area)
+
+
+# ---------------------------------------------------------------- 나무 3그루 (수관 3~4 덩어리)
+
+func _build_trees() -> void:
+	var trees := Node3D.new()
+	trees.name = "Trees"
+	add_child(trees)
+	_tree(trees, "Tree1", Vector3(-13.5, 0.0, 6.0), 4.2, 0.0)
+	_tree(trees, "Tree2", Vector3(4.5, 0.0, -11.0), 3.6, 35.0)
+	_tree(trees, "Tree3", Vector3(15.5, 1.0, -12.5), 3.0, -20.0)  # 테라스 위
+
+
+func _tree(parent: Node, n: String, pos: Vector3, height: float, yaw: float) -> void:
+	var t := Node3D.new()
+	t.name = n
+	t.position = pos
+	t.rotation_degrees.y = yaw
+	parent.add_child(t)
+	_cylinder(t, "Trunk", 0.22, height, Vector3(0.0, height * 0.5, 0.0), MAT_SLATE)
+	var crown := Node3D.new()
+	crown.name = "Crown"
+	crown.position = Vector3(0.0, height, 0.0)
+	t.add_child(crown)
+	var s := height * 0.55
+	_box(crown, "Blob1", Vector3(s * 1.1, s * 0.7, s * 1.1), Vector3(0.0, 0.0, 0.0), MAT_OLIVE, false, 20.0)
+	_box(crown, "Blob2", Vector3(s * 0.8, s * 0.6, s * 0.8), Vector3(s * 0.35, s * 0.35, -s * 0.2), MAT_OLIVE_LIGHT, false, -15.0)
+	_box(crown, "Blob3", Vector3(s * 0.7, s * 0.55, s * 0.7), Vector3(-s * 0.4, s * 0.25, s * 0.25), MAT_OLIVE, false, 40.0)
+	_box(crown, "Blob4", Vector3(s * 0.55, s * 0.45, s * 0.55), Vector3(0.0, s * 0.65, 0.0), MAT_OLIVE_LIGHT, false, 10.0)
+
+
+# ---------------------------------------------------------------- 그림자 가림 시험 구조물
+
+func _build_shadow_pillar() -> void:
+	# 광장 남동쪽 높은 아치 기둥 2개 + 상단 보: 플레이어가 그 그림자 속을 걸으며 밴드 변화를 본다
+	_box(self, "ArchPostA", Vector3(0.8, 4.5, 0.8), Vector3(3.0, 2.25, 6.0), MAT_STONE)
+	_box(self, "ArchPostB", Vector3(0.8, 4.5, 0.8), Vector3(7.0, 2.25, 6.0), MAT_STONE)
+	_box(self, "ArchBeam", Vector3(5.2, 0.7, 1.0), Vector3(5.0, 4.6, 6.0), MAT_STONE_LIT, false)
+
+
+# ---------------------------------------------------------------- 맵 경계 (보이지 않는 충돌)
+
+## 36×28 플레이 영역 바깥으로 나가지 못하게 하는 투명 벽. 카메라 클램프와 함께 빈 공간 노출을 막는다.
+func _build_boundary() -> void:
+	var b := Node3D.new()
+	b.name = "Boundary"
+	add_child(b)
+	var hw := 18.0
+	var hd := 14.0
+	var h := 3.0
+	_invisible_wall(b, "N", Vector3(hw * 2.0 + 1.0, h, 0.5), Vector3(0.0, h * 0.5, -hd - 0.25))
+	_invisible_wall(b, "S", Vector3(hw * 2.0 + 1.0, h, 0.5), Vector3(0.0, h * 0.5, hd + 0.25))
+	_invisible_wall(b, "W", Vector3(0.5, h, hd * 2.0 + 1.0), Vector3(-hw - 0.25, h * 0.5, 0.0))
+	_invisible_wall(b, "E", Vector3(0.5, h, hd * 2.0 + 1.0), Vector3(hw + 0.25, h * 0.5, 0.0))
+
+
+func _invisible_wall(parent: Node, n: String, size: Vector3, pos: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.name = "Bound" + n
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	body.position = pos
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+	parent.add_child(body)

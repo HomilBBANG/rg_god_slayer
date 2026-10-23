@@ -1,0 +1,160 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/player_controller.gd" id="1_ctrl"]
+[ext_resource type="Material" path="res://materials/mat_cloth.tres" id="2_cloth"]
+[ext_resource type="Material" path="res://materials/mat_skin.tres" id="3_skin"]
+[ext_resource type="Material" path="res://materials/mat_hair.tres" id="4_hair"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.26
+height = 1.6
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+size = Vector3(0.13, 0.85, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_shoe"]
+size = Vector3(0.13, 0.08, 0.27)
+
+[sub_resource type="BoxMesh" id="BoxMesh_torso"]
+size = Vector3(0.34, 0.5, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_waist"]
+size = Vector3(0.28, 0.12, 0.18)
+
+[sub_resource type="BoxMesh" id="BoxMesh_neck"]
+size = Vector3(0.09, 0.08, 0.09)
+
+[sub_resource type="BoxMesh" id="BoxMesh_head"]
+size = Vector3(0.19, 0.24, 0.21)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hair_top"]
+size = Vector3(0.23, 0.12, 0.26)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hair_back"]
+size = Vector3(0.24, 0.56, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hair_side"]
+size = Vector3(0.06, 0.4, 0.17)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hair_front"]
+size = Vector3(0.2, 0.06, 0.08)
+
+[sub_resource type="BoxMesh" id="BoxMesh_upper_arm"]
+size = Vector3(0.09, 0.28, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_forearm"]
+size = Vector3(0.08, 0.27, 0.09)
+
+[node name="Player" type="CharacterBody3D" groups=["player"]]
+collision_layer = 2
+collision_mask = 5
+floor_snap_length = 0.3
+script = ExtResource("1_ctrl")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Body" type="Node3D" parent="VisualRoot"]
+
+[node name="HipL" type="Node3D" parent="VisualRoot/Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.93, 0)
+
+[node name="Leg" type="MeshInstance3D" parent="VisualRoot/Body/HipL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.425, 0)
+mesh = SubResource("BoxMesh_leg")
+material_override = ExtResource("2_cloth")
+
+[node name="Shoe" type="MeshInstance3D" parent="VisualRoot/Body/HipL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.89, -0.05)
+mesh = SubResource("BoxMesh_shoe")
+material_override = ExtResource("2_cloth")
+
+[node name="HipR" type="Node3D" parent="VisualRoot/Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.93, 0)
+
+[node name="Leg" type="MeshInstance3D" parent="VisualRoot/Body/HipR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.425, 0)
+mesh = SubResource("BoxMesh_leg")
+material_override = ExtResource("2_cloth")
+
+[node name="Shoe" type="MeshInstance3D" parent="VisualRoot/Body/HipR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.89, -0.05)
+mesh = SubResource("BoxMesh_shoe")
+material_override = ExtResource("2_cloth")
+
+[node name="Torso" type="Node3D" parent="VisualRoot/Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.93, 0)
+
+[node name="Waist" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("BoxMesh_waist")
+material_override = ExtResource("2_cloth")
+
+[node name="TorsoMesh" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.29, 0)
+mesh = SubResource("BoxMesh_torso")
+material_override = ExtResource("2_cloth")
+
+[node name="Neck" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.57, 0)
+mesh = SubResource("BoxMesh_neck")
+material_override = ExtResource("3_skin")
+
+[node name="Head" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.71, 0)
+mesh = SubResource("BoxMesh_head")
+material_override = ExtResource("3_skin")
+
+[node name="HairTop" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.81, 0.01)
+mesh = SubResource("BoxMesh_hair_top")
+material_override = ExtResource("4_hair")
+
+[node name="HairFront" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.79, -0.1)
+mesh = SubResource("BoxMesh_hair_front")
+material_override = ExtResource("4_hair")
+
+[node name="HairBack" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0.15)
+mesh = SubResource("BoxMesh_hair_back")
+material_override = ExtResource("4_hair")
+
+[node name="HairSideL" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.6, 0.04)
+mesh = SubResource("BoxMesh_hair_side")
+material_override = ExtResource("4_hair")
+
+[node name="HairSideR" type="MeshInstance3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.6, 0.04)
+mesh = SubResource("BoxMesh_hair_side")
+material_override = ExtResource("4_hair")
+
+[node name="ShoulderL" type="Node3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.215, 0.49, 0)
+
+[node name="UpperArm" type="MeshInstance3D" parent="VisualRoot/Body/Torso/ShoulderL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.14, 0)
+mesh = SubResource("BoxMesh_upper_arm")
+material_override = ExtResource("2_cloth")
+
+[node name="Forearm" type="MeshInstance3D" parent="VisualRoot/Body/Torso/ShoulderL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.415, 0)
+mesh = SubResource("BoxMesh_forearm")
+material_override = ExtResource("3_skin")
+
+[node name="ShoulderR" type="Node3D" parent="VisualRoot/Body/Torso"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.215, 0.49, 0)
+
+[node name="UpperArm" type="MeshInstance3D" parent="VisualRoot/Body/Torso/ShoulderR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.14, 0)
+mesh = SubResource("BoxMesh_upper_arm")
+material_override = ExtResource("2_cloth")
+
+[node name="Forearm" type="MeshInstance3D" parent="VisualRoot/Body/Torso/ShoulderR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.415, 0)
+mesh = SubResource("BoxMesh_forearm")
+material_override = ExtResource("3_skin")

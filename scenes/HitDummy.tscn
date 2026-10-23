@@ -1,0 +1,53 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/hit_dummy.gd" id="1_script"]
+[ext_resource type="Material" path="res://materials/mat_dummy.tres" id="2_mat"]
+[ext_resource type="Material" path="res://materials/mat_slate.tres" id="3_post"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_1"]
+radius = 0.32
+height = 1.7
+
+[sub_resource type="BoxMesh" id="BoxMesh_post"]
+size = Vector3(0.18, 0.5, 0.18)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(0.5, 0.9, 0.36)
+
+[sub_resource type="BoxMesh" id="BoxMesh_head"]
+size = Vector3(0.28, 0.3, 0.28)
+
+[node name="HitDummy" type="StaticBody3D" groups=["attack_targets"]]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+shape = SubResource("CylinderShape3D_1")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Post" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+mesh = SubResource("BoxMesh_post")
+material_override = ExtResource("3_post")
+
+[node name="Body" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("BoxMesh_body")
+material_override = ExtResource("2_mat")
+
+[node name="Head" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.58, 0)
+mesh = SubResource("BoxMesh_head")
+material_override = ExtResource("2_mat")
+
+[node name="HitLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+billboard = 1
+no_depth_test = true
+text = "HIT 0"
+font_size = 48
+outline_size = 0
+modulate = Color(0.85, 0.85, 0.82, 1)

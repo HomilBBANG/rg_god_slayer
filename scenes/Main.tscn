@@ -1,0 +1,70 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/TestCourtyard.tscn" id="2_courtyard"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/HitDummy.tscn" id="4_dummy"]
+[ext_resource type="PackedScene" path="res://scenes/CameraRig.tscn" id="5_rig"]
+[ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="6_hud"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.33, 0.4, 0.43, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.45, 0.53, 0.58, 1)
+ambient_light_energy = 0.35
+tonemap_mode = 2
+tonemap_white = 4.0
+ssr_enabled = false
+ssao_enabled = false
+ssil_enabled = false
+sdfgi_enabled = false
+glow_enabled = false
+fog_enabled = false
+adjustment_enabled = true
+adjustment_brightness = 1.0
+adjustment_contrast = 1.0
+adjustment_saturation = 0.9
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributes_main"]
+dof_blur_far_enabled = false
+dof_blur_near_enabled = false
+auto_exposure_enabled = false
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+camera_attributes = SubResource("CameraAttributes_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819152, 0.383022, -0.426552, 0, 0.743145, 0.66913, 0.573576, -0.548125, 0.608762, 0, 12, 0)
+light_color = Color(0.98, 0.93, 0.8, 1)
+light_energy = 1.0
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.5
+directional_shadow_mode = 0
+directional_shadow_max_distance = 60.0
+
+[node name="TestCourtyard" parent="." instance=ExtResource("2_courtyard")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
+
+[node name="HitDummies" type="Node3D" parent="."]
+
+[node name="HitDummy01" parent="HitDummies" instance=ExtResource("4_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 3.5)
+
+[node name="HitDummy02" parent="HitDummies" instance=ExtResource("4_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1, -9.5)
+
+[node name="CameraRig" parent="." instance=ExtResource("5_rig")]
+target_path = NodePath("../Player")
+
+[node name="HUD" parent="." instance=ExtResource("6_hud")]
+player_path = NodePath("../Player")
+camera_rig_path = NodePath("../CameraRig")
+sun_path = NodePath("../DirectionalLight3D")

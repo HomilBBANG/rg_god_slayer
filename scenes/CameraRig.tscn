@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/camera_follow.gd" id="1_script"]
+
+[node name="CameraRig" type="Node3D" groups=["camera_rig"]]
+script = ExtResource("1_script")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.707107, -0.557443, 0.434664, 0, 0.615063, 0.788478, -0.707107, -0.557443, 0.434664, 10.8834, 19.7004, 10.8834)
+projection = 1
+size = 15.0
+near = 0.1
+far = 100.0
