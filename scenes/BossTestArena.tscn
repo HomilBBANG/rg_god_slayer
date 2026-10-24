@@ -1,0 +1,155 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/boss_arena.gd" id="2_arena"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://combat/boss_controller.gd" id="4_boss"]
+[ext_resource type="Script" path="res://combat/combat_director.gd" id="13_director"]
+[ext_resource type="Script" path="res://combat/attack_debug_overlay.gd" id="14_overlay"]
+[ext_resource type="Script" path="res://combat/battle_result_controller.gd" id="15_result"]
+
+[ext_resource type="PackedScene" path="res://scenes/CameraRig.tscn" id="5_rig"]
+[ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="6_hud"]
+[ext_resource type="Script" path="res://scripts/light_shafts.gd" id="7_shafts"]
+[ext_resource type="Script" path="res://scripts/grass_field.gd" id="8_grass"]
+[ext_resource type="Texture2D" path="res://assets/environment/flower.png" id="9_flower"]
+[ext_resource type="Script" path="res://scripts/inventory.gd" id="10_inv"]
+[ext_resource type="Script" path="res://scripts/ui/inventory_window.gd" id="11_invwin"]
+[ext_resource type="Script" path="res://scripts/ui/equipment_window.gd" id="12_eqwin"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_boss"]
+radius = 0.8
+height = 3.0
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.16, 0.19, 0.24, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.40, 0.44, 0.52, 1)
+ambient_light_energy = 0.35
+tonemap_mode = 2
+tonemap_white = 4.0
+ssr_enabled = false
+ssao_enabled = false
+ssil_enabled = false
+sdfgi_enabled = false
+glow_enabled = false
+fog_enabled = false
+adjustment_enabled = true
+adjustment_brightness = 1.0
+adjustment_contrast = 1.0
+adjustment_saturation = 0.9
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributes_main"]
+dof_blur_far_enabled = false
+dof_blur_near_enabled = false
+auto_exposure_enabled = false
+
+[node name="Main" type="Node"]
+process_mode = 3
+script = ExtResource("1_main")
+
+[node name="PixelCanvas" type="CanvasLayer" parent="."]
+layer = 0
+
+[node name="PixelScreen" type="TextureRect" parent="PixelCanvas"]
+texture_filter = 1
+offset_left = -6.0
+offset_top = -6.0
+offset_right = 1926.0
+offset_bottom = 1086.0
+expand_mode = 1
+stretch_mode = 0
+
+[node name="World" type="SubViewport" parent="."]
+process_mode = 1
+own_world_3d = true
+handle_input_locally = false
+msaa_3d = 2
+screen_space_aa = 0
+positional_shadow_atlas_size = 1024
+size = Vector2i(644, 364)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="World"]
+environment = SubResource("Environment_main")
+camera_attributes = SubResource("CameraAttributes_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(0.819152, 0.383022, -0.426552, 0, 0.743145, 0.66913, 0.573576, -0.548125, 0.608762, 0, 12, 0)
+light_color = Color(1.0, 0.93, 0.76, 1)
+light_energy = 1.0
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.5
+directional_shadow_mode = 0
+directional_shadow_max_distance = 60.0
+
+[node name="BossArena" type="Node3D" parent="World"]
+script = ExtResource("2_arena")
+
+[node name="GrassField" type="MultiMeshInstance3D" parent="World"]
+script = ExtResource("8_grass")
+patches = [[Rect2(-20, -16, 40, 32), 0.9]]
+base_color = Color(0.52, 0.56, 0.34, 1)
+exclude_rects = [Rect2(-10.5, -10.5, 21, 21)]
+
+[node name="FlowerField" type="MultiMeshInstance3D" parent="World"]
+script = ExtResource("8_grass")
+patches = [[Rect2(-20, -16, 40, 32), 0.04]]
+seed_value = 99
+texture = ExtResource("9_flower")
+tuft_size = Vector2(0.28, 0.28)
+size_jitter = 0.2
+base_color = Color(0.80, 0.78, 0.70, 1)
+sway = 0.015
+exclude_rects = [Rect2(-10.5, -10.5, 21, 21)]
+
+[node name="LightShafts" type="Node3D" parent="World"]
+script = ExtResource("7_shafts")
+
+[node name="Player" parent="World" instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 4)
+
+[node name="Boss" type="CharacterBody3D" parent="World" groups=["attack_targets", "boss"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4)
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("4_boss")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Boss"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("CapsuleShape3D_boss")
+
+[node name="CombatDirector" type="Node" parent="World"]
+script = ExtResource("13_director")
+boss_path = NodePath("../Boss")
+player_path = NodePath("../Player")
+camera_rig_path = NodePath("../CameraRig")
+
+[node name="CameraRig" parent="World" instance=ExtResource("5_rig")]
+target_path = NodePath("../Player")
+bounds_min = Vector2(-9, -7)
+bounds_max = Vector2(9, 7)
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("10_inv")
+
+[node name="InventoryWindow" type="CanvasLayer" parent="."]
+script = ExtResource("11_invwin")
+
+[node name="EquipmentWindow" type="CanvasLayer" parent="."]
+script = ExtResource("12_eqwin")
+
+[node name="BattleResult" type="CanvasLayer" parent="."]
+script = ExtResource("15_result")
+
+[node name="AttackDebugOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("14_overlay")
+director_path = NodePath("../World/CombatDirector")
+
+[node name="HUD" parent="." instance=ExtResource("6_hud")]
+layer = 1
+player_path = NodePath("../World/Player")
+camera_rig_path = NodePath("../World/CameraRig")
+sun_path = NodePath("../World/DirectionalLight3D")

@@ -7,7 +7,15 @@
 class_name PlayerController
 extends CharacterBody3D
 
-enum State { IDLE, WALK, ATTACK, DODGE }
+enum State { IDLE, WALK, ATTACK, DODGE, PARRY, SCRIPTED, FATAL, DEAD }
+
+## Z 3타 연계 (GDD §7): [전체, 유효 시작, 유효 끝, 피해]
+const COMBO := [[0.25, 0.09, 0.15, 1], [0.27, 0.08, 0.16, 1], [0.33, 0.12, 0.21, 2]]
+const COMBO_BUFFER := 0.10
+const COMBO_MOVE_FACTOR := 0.35
+const PARRY_LEN := 0.35
+## 일반 패턴 패링 활성창 (게임 초) — 패링 시작 후 이 시간 안에 타격이 오면 성공
+const PARRY_ACTIVE := 0.20
 
 @export_group("Movement")
 @export var move_speed: float = 3.8
@@ -50,6 +58,18 @@ var facing: Vector3 = Vector3(0, 0, 1)
 var move_input: Vector2 = Vector2.ZERO
 ## main 이 넣어 준다. 없으면 기본 인벤토리를 만든다.
 var inventory: Inventory
+## 보스 전투 (BossTestArena 에서만 설정)
+var combat_director: CombatDirector
+## 타격 프레임 무적 (시네마틱 회피 성공 시)
+var invulnerable: bool = false
+
+var _combo_index: int = 0
+var _combo_buffered: bool = false
+var _parry_time: float = 0.0
+var _scripted_time: float = 0.0
+var _scripted_len: float = 0.0
+var _scripted_dir: Vector3 = Vector3.ZERO
+var _scripted_speed: float = 0.0
 
 var _attack_time: float = 0.0
 var _attack_item: Dictionary = {}
@@ -195,13 +215,53 @@ func _physics_process(delta: float) -> void:
 	_throw_cd = maxf(0.0, _throw_cd - delta)
 	_oneshot_left = maxf(0.0, _oneshot_left - delta)
 	_update_reload(delta)
+
+	# ---- 전투 특수 상태: 입력을 받지 않는다 (치명적 판단은 FatalReactionController 가 처리)
+	match state:
+		State.DEAD:
+			velocity.x = move_toward(velocity.x, 0.0, deceleration * delta)
+			velocity.z = move_toward(velocity.z, 0.0, deceleration * delta)
+			velocity.y = 0.0 if is_on_floor() else velocity.y - gravity * delta
+			move_and_slide()
+			return
+		State.FATAL:
+			velocity.x = 0.0
+			velocity.z = 0.0
+			velocity.y = 0.0 if is_on_floor() else velocity.y - gravity * delta
+			move_and_slide()
+			_apply_facing(delta, false)
+			return
+		State.SCRIPTED:
+			_scripted_time += delta
+			var k := 1.0 - clampf(_scripted_time / _scripted_len, 0.0, 1.0)
+			velocity = _scripted_dir * _scripted_speed * (0.4 + 1.2 * k)
+			velocity.y = 0.0
+			move_and_slide()
+			_apply_facing(delta, false)
+			if _scripted_time >= _scripted_len:
+				invulnerable = false
+				state = State.IDLE
+			return
+		State.PARRY:
+			_parry_time += delta
+			velocity.x = move_toward(velocity.x, 0.0, deceleration * delta)
+			velocity.z = move_toward(velocity.z, 0.0, deceleration * delta)
+			velocity.y = 0.0
+			move_and_slide()
+			_apply_facing(delta, false)
+			if _parry_time >= PARRY_LEN:
+				state = State.IDLE
+			return
+		_:
+			pass
+
 	_handle_quick_slots()
 
 	# 회피: 회피 중이 아니면 언제든 (근접 공격은 유효 타격이 끝난 뒤부터 캔슬 가능)
 	if state != State.DODGE and _dodge_cd <= 0.0 and Input.is_action_just_pressed("dodge"):
 		if state != State.ATTACK or _attack_time >= float(_attack_item.get("active_end", 0.0)):
 			_start_dodge(wish_dir)
-	elif state != State.ATTACK and state != State.DODGE:
+	elif state == State.IDLE or state == State.WALK:
 		_handle_attack_input()
 
 	# 상태 갱신
@@ -210,8 +270,15 @@ func _physics_process(delta: float) -> void:
 			_attack_time += delta
 			if _attack_time >= float(_attack_item.get("windup", 0.07)) and _attack_time < float(_attack_item.get("active_end", 0.16)):
 				_do_melee_hitcheck()
-			if _attack_time >= float(_attack_item.get("duration", 0.3)):
-				state = State.IDLE
+			# 추가 Z 입력 버퍼: 타격 종료 0.10 s 전부터 예약
+			var dur := float(_attack_item.get("duration", 0.3))
+			if _attack_item.get("combo", false) and Input.is_action_just_pressed("attack") and _attack_time >= dur - COMBO_BUFFER:
+				_combo_buffered = true
+			if _attack_time >= dur:
+				if _attack_item.get("combo", false) and _combo_buffered and _combo_index < COMBO.size() - 1:
+					_start_melee(Items.get_item(inventory.active_weapon()), _combo_index + 1)
+				else:
+					state = State.IDLE
 		State.DODGE:
 			_dodge_time += delta
 			if _dodge_time >= dodge_duration and (is_on_floor() or _dodge_time > dodge_duration * 2.0):
@@ -276,25 +343,120 @@ func _use_quick(i: int) -> void:
 
 
 func _handle_attack_input() -> void:
+	if Input.is_action_just_pressed("parry"):
+		_start_parry()
+		return
 	var id := inventory.active_weapon()
 	var d := Items.get_item(id)
 	if d.is_empty():
 		return
 	if d["kind"] == Items.Kind.MELEE:
 		if Input.is_action_just_pressed("attack"):
-			_start_melee(d)
+			_start_melee(d, 0)
 	elif d["kind"] == Items.Kind.RANGED:
 		var want := Input.is_action_pressed("attack") if bool(d.get("auto", false)) else Input.is_action_just_pressed("attack")
 		if want:
 			_try_fire(id, d)
 
 
-func _start_melee(d: Dictionary) -> void:
+## 근접: 검은 3타 연계 (COMBO 표의 시간/피해로 아이템 수치를 덮어쓴다)
+func _start_melee(d: Dictionary, combo_index: int = 0) -> void:
 	state = State.ATTACK
 	_attack_time = 0.0
-	_attack_item = d
+	_combo_index = combo_index
+	_combo_buffered = false
+	var item := d.duplicate()
+	var c: Array = COMBO[combo_index]
+	item["duration"] = c[0]
+	item["windup"] = c[1]
+	item["active_end"] = c[2]
+	item["damage"] = c[3]
+	item["move_factor"] = COMBO_MOVE_FACTOR
+	item["combo"] = true
+	_attack_item = item
 	_attack_hit_done.clear()
-	_play("Attack", AnimBuilder.ATTACK_LEN / float(d.get("duration", 0.3)), true)
+	_play("Attack%d" % (combo_index + 1), 1.0, true)
+
+
+func _start_parry() -> void:
+	state = State.PARRY
+	_parry_time = 0.0
+	_play("Parry", 1.0, true)
+
+
+## 일반 패턴 패링 판정용: 패링 시작 직후 활성창
+func is_parry_active() -> bool:
+	return state == State.PARRY and _parry_time <= PARRY_ACTIVE
+
+
+# ---------------------------------------------------------------- 보스 전투 (FatalReactionController / CombatDirector 가 호출)
+
+## 치명적 판단 시작: 공격/후딜/이동을 즉시 인터럽트하고 멈춘다 (순간 대응이 최우선)
+func begin_fatal() -> void:
+	state = State.FATAL
+	_combo_buffered = false
+	_oneshot_left = 0.0
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_play("Brace", 1.0, true)
+
+
+## 시네마틱 회피 스텝: 화면 방향으로 meters 를 game_seconds 동안. 타격 프레임 무적.
+func scripted_dodge(dir: Vector3, meters: float, game_seconds: float) -> void:
+	state = State.SCRIPTED
+	_scripted_dir = Vector3(dir.x, 0.0, dir.z).normalized()
+	_scripted_len = game_seconds
+	_scripted_speed = meters / maxf(game_seconds, 0.01)
+	_scripted_time = 0.0
+	invulnerable = true
+	_play("SideStep", 1.0, true)
+
+
+## 치명적 패턴 패링 성공 연출
+func scripted_parry() -> void:
+	state = State.PARRY
+	_parry_time = 0.0
+	velocity = Vector3.ZERO
+	_play("Parry", 1.0, true)
+
+
+func die() -> void:
+	state = State.DEAD
+	invulnerable = false
+	_combo_buffered = false
+	velocity = Vector3.ZERO
+	_play("Death", 1.0, true)
+
+
+## 치명적 상태에서 해제 (보스 승리 등)
+func end_combat_lock() -> void:
+	if state == State.FATAL or state == State.SCRIPTED:
+		state = State.IDLE
+	invulnerable = false
+
+
+## 재도전: 위치/방향/상태/콤보/버퍼/무적/탄 전부 초기화
+func reset_for_retry(pos: Vector3, face: Vector3) -> void:
+	global_position = pos
+	velocity = Vector3.ZERO
+	facing = face.normalized()
+	state = State.IDLE
+	invulnerable = false
+	_combo_index = 0
+	_combo_buffered = false
+	_attack_time = 0.0
+	_attack_item = {}
+	_dodge_cd = 0.0
+	_fire_cd = 0.0
+	_reload_left = 0.0
+	_throw_cd = 0.0
+	_oneshot_left = 0.0
+	if inventory:
+		for id in inventory.ammo:
+			inventory.ammo[id] = int(Items.get_item(id).get("magazine", 1))
+		inventory.changed.emit()
+	_apply_facing(0.0, true)
+	_play("Idle", 1.0, true)
 
 
 func _try_fire(id: String, d: Dictionary) -> void:
@@ -396,9 +558,7 @@ func _update_animation(speed: float) -> void:
 				_play("Walk", clampf(speed / move_speed * 1.12, 0.35, 1.5))
 			else:
 				_play("Idle")
-		State.ATTACK:
-			pass
-		State.DODGE:
+		_:
 			pass
 
 
@@ -471,4 +631,12 @@ func state_name() -> String:
 			return "ATTACK %.2f" % _attack_time
 		State.DODGE:
 			return "DODGE %.2f" % _dodge_time
+		State.PARRY:
+			return "PARRY %.2f" % _parry_time
+		State.SCRIPTED:
+			return "SCRIPTED_DODGE %.2f" % _scripted_time
+		State.FATAL:
+			return "FATAL_DECISION"
+		State.DEAD:
+			return "DEAD"
 	return "?"

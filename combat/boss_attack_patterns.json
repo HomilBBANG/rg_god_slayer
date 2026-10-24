@@ -1,0 +1,161 @@
+{
+  "schema_version": "0.3",
+  "target_engine": "Godot 4.x",
+  "prototype_sequence": [
+    "N01",
+    "N02",
+    "F01",
+    "N03",
+    "F04",
+    "N04",
+    "F02",
+    "F05",
+    "F03"
+  ],
+  "patterns": [
+    {
+      "id": "N01",
+      "category": "NORMAL",
+      "telegraph_game_seconds": 0.38,
+      "active_game_seconds": 0.1,
+      "recovery_game_seconds": 0.3,
+      "allowed_actions": [],
+      "lethal_on_hit": true,
+      "visual_cue": "horizontal_front_sweep"
+    },
+    {
+      "id": "N02",
+      "category": "NORMAL",
+      "telegraph_game_seconds": 0.45,
+      "active_game_seconds": 0.1,
+      "recovery_game_seconds": 0.35,
+      "allowed_actions": [],
+      "lethal_on_hit": true,
+      "visual_cue": "straight_lunge"
+    },
+    {
+      "id": "N03",
+      "category": "NORMAL",
+      "telegraph_game_seconds": 0.55,
+      "active_game_seconds": 0.12,
+      "recovery_game_seconds": 0.4,
+      "allowed_actions": [],
+      "lethal_on_hit": true,
+      "visual_cue": "circular_ground_strike"
+    },
+    {
+      "id": "N04",
+      "category": "NORMAL",
+      "telegraph_game_seconds": 0.5,
+      "active_game_seconds": 0.12,
+      "recovery_game_seconds": 0.45,
+      "allowed_actions": [],
+      "lethal_on_hit": true,
+      "visual_cue": "double_sweep"
+    },
+    {
+      "id": "F01",
+      "category": "FATAL_CINEMATIC",
+      "telegraph_game_seconds": 0.4,
+      "focus_real_seconds": 0.1,
+      "decision_real_seconds": 0.2,
+      "time_scale": 0.18,
+      "zoom_size": 9.5,
+      "allowed_actions": [
+        "DODGE_RIGHT"
+      ],
+      "parryable": false,
+      "screen_safe_directions": [
+        "RIGHT"
+      ],
+      "reaction_step_meters": 1.8,
+      "post_success_boss_recovery_game_seconds": 0.7,
+      "lethal_on_hit": true,
+      "visual_cue": "left_sweep",
+      "requires_clear_destination": true
+    },
+    {
+      "id": "F02",
+      "category": "FATAL_CINEMATIC",
+      "telegraph_game_seconds": 0.4,
+      "focus_real_seconds": 0.1,
+      "decision_real_seconds": 0.2,
+      "time_scale": 0.18,
+      "zoom_size": 9.5,
+      "allowed_actions": [
+        "DODGE_LEFT"
+      ],
+      "parryable": false,
+      "screen_safe_directions": [
+        "LEFT"
+      ],
+      "reaction_step_meters": 1.8,
+      "post_success_boss_recovery_game_seconds": 0.7,
+      "lethal_on_hit": true,
+      "visual_cue": "right_thrust",
+      "requires_clear_destination": true
+    },
+    {
+      "id": "F03",
+      "category": "FATAL_CINEMATIC",
+      "telegraph_game_seconds": 0.45,
+      "focus_real_seconds": 0.1,
+      "decision_real_seconds": 0.2,
+      "time_scale": 0.18,
+      "zoom_size": 9.5,
+      "allowed_actions": [
+        "DODGE_UP"
+      ],
+      "parryable": false,
+      "screen_safe_directions": [
+        "UP"
+      ],
+      "reaction_step_meters": 1.8,
+      "post_success_boss_recovery_game_seconds": 0.7,
+      "lethal_on_hit": true,
+      "visual_cue": "low_sweep",
+      "requires_clear_destination": true
+    },
+    {
+      "id": "F04",
+      "category": "FATAL_CINEMATIC",
+      "telegraph_game_seconds": 0.45,
+      "focus_real_seconds": 0.1,
+      "decision_real_seconds": 0.2,
+      "time_scale": 0.18,
+      "zoom_size": 9.5,
+      "allowed_actions": [
+        "PARRY_X"
+      ],
+      "parryable": true,
+      "screen_safe_directions": [],
+      "reaction_step_meters": 1.8,
+      "post_success_boss_recovery_game_seconds": 0.85,
+      "lethal_on_hit": true,
+      "visual_cue": "silver_glint",
+      "requires_clear_destination": false
+    },
+    {
+      "id": "F05",
+      "category": "FATAL_CINEMATIC",
+      "telegraph_game_seconds": 0.5,
+      "focus_real_seconds": 0.1,
+      "decision_real_seconds": 0.2,
+      "time_scale": 0.18,
+      "zoom_size": 9.5,
+      "allowed_actions": [
+        "DODGE_DOWN",
+        "PARRY_X"
+      ],
+      "parryable": true,
+      "screen_safe_directions": [
+        "DOWN"
+      ],
+      "reaction_step_meters": 1.8,
+      "post_success_boss_recovery_game_seconds": 0.7,
+      "lethal_on_hit": true,
+      "visual_cue": "silver_glint",
+      "requires_clear_destination": true
+    }
+  ]
+}

@@ -43,6 +43,11 @@ var texel_size: float = 0.0
 var _target: Node3D
 var _camera_local_offset: Vector3
 
+## 전투 카메라 연출용: true 면 focus_point 를 현실 시간으로 따라간다 (CombatCameraDirector 가 제어)
+var focus_override: bool = false
+var focus_point: Vector3 = Vector3.ZERO
+var _last_us: int = 0
+
 
 func _ready() -> void:
 	if target_path != NodePath():
@@ -85,6 +90,15 @@ func _clamped_target() -> Vector3:
 
 
 func _process(delta: float) -> void:
+	var now := CombatClock.now_us()
+	var real_dt := clampf(float(now - _last_us) / 1_000_000.0, 0.0, 0.1) if _last_us > 0 else delta
+	_last_us = now
+	if focus_override:
+		# 슬로모션 중에도 현실 시간으로 빠르게 주시점에 붙는다 (회전 없음)
+		var wf := 1.0 - exp(-real_dt / 0.05)
+		global_position = global_position.lerp(focus_point, wf)
+		_snap_camera()
+		return
 	if _target == null:
 		return
 	var goal := _clamped_target()
@@ -92,6 +106,14 @@ func _process(delta: float) -> void:
 	var w := 1.0 - exp(-delta / maxf(smoothing_time, 0.0001))
 	global_position = global_position.lerp(goal, w)
 	_snap_camera()
+
+
+## 직교 크기 변경 (전투 카메라 줌). 텍셀 크기도 같이 갱신된다.
+func set_ortho_size(s: float) -> void:
+	if absf(s - ortho_size) < 0.0001:
+		return
+	ortho_size = s
+	_apply_camera_transform()
 
 
 ## 카메라의 '진짜' 위치를 화면 right/up 축에서 텍셀 단위로 내림하고 잔량을 보정값으로 내보낸다.

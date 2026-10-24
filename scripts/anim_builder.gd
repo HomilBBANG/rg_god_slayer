@@ -39,6 +39,14 @@ func build_library() -> AnimationLibrary:
 	lib.add_animation("Idle", _sampled("Idle", IDLE_CYCLE, _idle_pose, true))
 	lib.add_animation("Walk", _sampled("Walk", WALK_CYCLE, _walk_pose, true))
 	lib.add_animation("Attack", _keyed("Attack", ATTACK_LEN, _attack_keys()))
+	# Z 3타 (GDD §7: 0.25 / 0.27 / 0.33 s). 2타는 반대쪽에서 들어오는 역베기, 3타는 크게 내려치는 강타
+	lib.add_animation("Attack1", _keyed("Attack1", 0.25, _scaled_keys(_attack_keys(), 0.25 / ATTACK_LEN)))
+	lib.add_animation("Attack2", _keyed("Attack2", 0.27, _scaled_keys(_mirror_yaw(_attack_keys()), 0.27 / ATTACK_LEN)))
+	lib.add_animation("Attack3", _keyed("Attack3", 0.33, _heavy_keys()))
+	lib.add_animation("Parry", _keyed("Parry", 0.35, _parry_keys()))
+	lib.add_animation("SideStep", _keyed("SideStep", 0.30, _scaled_keys(_dodge_keys(1.0), 0.30 / DODGE_LEN)))
+	lib.add_animation("Brace", _keyed("Brace", 0.20, _brace_keys()))
+	lib.add_animation("Death", _keyed("Death", 0.60, _death_keys()))
 	lib.add_animation("DodgeFwd", _keyed("DodgeFwd", DODGE_LEN, _dodge_keys(1.0)))
 	lib.add_animation("DodgeBack", _keyed("DodgeBack", DODGE_LEN, _dodge_keys(-1.0)))
 	lib.add_animation("Shoot", _keyed("Shoot", SHOOT_LEN, _shoot_keys()))
@@ -151,6 +159,90 @@ func _attack_keys() -> Array:
 		"UpperLeg.L": Vector3(8, 0, -3), "UpperLeg.R": Vector3(-10, 0, 4), "LowerLeg.L": Vector3(-8, 0, 0), "LowerLeg.R": Vector3(-10, 0, 0),
 		"hips_pos": Vector3(0, -0.02, -0.02)}
 	return [[0.0, neutral], [0.07, windup], [0.16, strike], [0.22, settle], [ATTACK_LEN, neutral]]
+
+
+## 키 시간을 비율로 늘이거나 줄인다
+func _scaled_keys(keys: Array, k: float) -> Array:
+	var out := []
+	for e in keys:
+		out.append([float(e[0]) * k, e[1]])
+	return out
+
+
+## 상체 비틀기(yaw)를 반대로 — 역베기
+func _mirror_yaw(keys: Array) -> Array:
+	var out := []
+	for e in keys:
+		var pose: Dictionary = (e[1] as Dictionary).duplicate()
+		for n in ["Spine", "Chest", "Head"]:
+			if pose.has(n):
+				var v: Vector3 = pose[n]
+				pose[n] = Vector3(v.x, -v.y, v.z)
+		out.append([e[0], pose])
+	return out
+
+
+## 3타: 크게 들어 올렸다 내려치는 강타 (0.33 s, 유효 0.12~0.21)
+func _heavy_keys() -> Array:
+	var neutral := {"Spine": Vector3(-2, 0, 0), "Chest": Vector3(-1, 0, 0), "Head": Vector3(1, 0, 0),
+		"UpperArm.L": Vector3(2, 0, -4), "UpperArm.R": Vector3(2, 0, 4), "LowerArm.L": Vector3(10, 0, 0), "LowerArm.R": Vector3(10, 0, 0),
+		"UpperLeg.L": Vector3(0, 0, -1), "UpperLeg.R": Vector3(0, 0, 1), "LowerLeg.L": Vector3(-3, 0, 0), "LowerLeg.R": Vector3(-3, 0, 0),
+		"hips_pos": Vector3.ZERO}
+	var raise := {"Spine": Vector3(14, -10, 0), "Chest": Vector3(8, -6, 0), "Head": Vector3(-6, 6, 0),
+		"UpperArm.L": Vector3(30, 0, -14), "UpperArm.R": Vector3(-150, 0, 20), "LowerArm.L": Vector3(30, 0, 0), "LowerArm.R": Vector3(40, 0, 0),
+		"UpperLeg.L": Vector3(16, 0, -6), "UpperLeg.R": Vector3(-10, 0, 8), "LowerLeg.L": Vector3(-14, 0, 0), "LowerLeg.R": Vector3(-12, 0, 0),
+		"hips_pos": Vector3(0, -0.02, 0.03)}
+	var slam := {"Spine": Vector3(-26, 14, 0), "Chest": Vector3(-12, 8, 0), "Head": Vector3(-6, -8, 0),
+		"UpperArm.L": Vector3(-30, 0, -10), "UpperArm.R": Vector3(60, 0, 6), "LowerArm.L": Vector3(20, 0, 0), "LowerArm.R": Vector3(6, 0, 0),
+		"UpperLeg.L": Vector3(32, 0, -6), "UpperLeg.R": Vector3(-30, 0, 8), "LowerLeg.L": Vector3(-30, 0, 0), "LowerLeg.R": Vector3(-28, 0, 0),
+		"hips_pos": Vector3(0, -0.10, -0.08)}
+	var settle := {"Spine": Vector3(-10, 6, 0), "Chest": Vector3(-4, 2, 0), "Head": Vector3(0, -2, 0),
+		"UpperArm.L": Vector3(-8, 0, -6), "UpperArm.R": Vector3(30, 0, 6), "LowerArm.L": Vector3(14, 0, 0), "LowerArm.R": Vector3(16, 0, 0),
+		"UpperLeg.L": Vector3(12, 0, -3), "UpperLeg.R": Vector3(-12, 0, 4), "LowerLeg.L": Vector3(-12, 0, 0), "LowerLeg.R": Vector3(-12, 0, 0),
+		"hips_pos": Vector3(0, -0.04, -0.03)}
+	return [[0.0, neutral], [0.11, raise], [0.20, slam], [0.26, settle], [0.33, neutral]]
+
+
+## 패링: 두 팔을 앞에서 교차해 막는다 (0.35 s)
+func _parry_keys() -> Array:
+	var neutral := {"Spine": Vector3(-2, 0, 0), "Chest": Vector3(-1, 0, 0), "Head": Vector3(1, 0, 0),
+		"UpperArm.L": Vector3(2, 0, -4), "UpperArm.R": Vector3(2, 0, 4), "LowerArm.L": Vector3(10, 0, 0), "LowerArm.R": Vector3(10, 0, 0),
+		"UpperLeg.L": Vector3(0, 0, -1), "UpperLeg.R": Vector3(0, 0, 1), "LowerLeg.L": Vector3(-3, 0, 0), "LowerLeg.R": Vector3(-3, 0, 0),
+		"hips_pos": Vector3.ZERO}
+	var block := {"Spine": Vector3(4, 0, 0), "Chest": Vector3(2, 0, 0), "Head": Vector3(6, 0, 0),
+		"UpperArm.L": Vector3(55, 0, 30), "UpperArm.R": Vector3(75, 0, -24), "LowerArm.L": Vector3(85, 0, 0), "LowerArm.R": Vector3(95, 0, 0),
+		"UpperLeg.L": Vector3(22, 0, -6), "UpperLeg.R": Vector3(18, 0, 8), "LowerLeg.L": Vector3(-30, 0, 0), "LowerLeg.R": Vector3(-26, 0, 0),
+		"hips_pos": Vector3(0, -0.08, 0)}
+	var impact := block.duplicate()
+	impact["Spine"] = Vector3(10, 0, 0)
+	impact["hips_pos"] = Vector3(0, -0.10, 0.04)
+	return [[0.0, neutral], [0.05, block], [0.12, impact], [0.24, block], [0.35, neutral]]
+
+
+## 치명적 판단 대기: 살짝 웅크린 긴장 자세
+func _brace_keys() -> Array:
+	var brace := {"Spine": Vector3(-6, 0, 0), "Chest": Vector3(-3, 0, 0), "Head": Vector3(4, 0, 0),
+		"UpperArm.L": Vector3(20, 0, -12), "UpperArm.R": Vector3(20, 0, 12), "LowerArm.L": Vector3(40, 0, 0), "LowerArm.R": Vector3(40, 0, 0),
+		"UpperLeg.L": Vector3(16, 0, -8), "UpperLeg.R": Vector3(16, 0, 8), "LowerLeg.L": Vector3(-24, 0, 0), "LowerLeg.R": Vector3(-24, 0, 0),
+		"hips_pos": Vector3(0, -0.07, 0)}
+	return [[0.0, brace], [0.20, brace]]
+
+
+## 사망: 뒤로 휘청이다 쓰러진다 (마지막 포즈 유지)
+func _death_keys() -> Array:
+	var neutral := {"Spine": Vector3(-2, 0, 0), "Chest": Vector3(-1, 0, 0), "Head": Vector3(1, 0, 0),
+		"UpperArm.L": Vector3(2, 0, -4), "UpperArm.R": Vector3(2, 0, 4), "LowerArm.L": Vector3(10, 0, 0), "LowerArm.R": Vector3(10, 0, 0),
+		"UpperLeg.L": Vector3(0, 0, -1), "UpperLeg.R": Vector3(0, 0, 1), "LowerLeg.L": Vector3(-3, 0, 0), "LowerLeg.R": Vector3(-3, 0, 0),
+		"hips_pos": Vector3.ZERO}
+	var stagger := {"Spine": Vector3(18, 0, 0), "Chest": Vector3(10, 0, 0), "Head": Vector3(14, 0, 0),
+		"UpperArm.L": Vector3(-30, 0, -20), "UpperArm.R": Vector3(-30, 0, 20), "LowerArm.L": Vector3(20, 0, 0), "LowerArm.R": Vector3(20, 0, 0),
+		"UpperLeg.L": Vector3(-10, 0, -4), "UpperLeg.R": Vector3(14, 0, 4), "LowerLeg.L": Vector3(-10, 0, 0), "LowerLeg.R": Vector3(-20, 0, 0),
+		"hips_pos": Vector3(0, -0.04, 0.10)}
+	var fallen := {"Hips": Vector3(82, 0, 0), "Spine": Vector3(4, 0, 0), "Chest": Vector3(2, 0, 0), "Head": Vector3(-6, 0, 0),
+		"UpperArm.L": Vector3(-20, 0, -40), "UpperArm.R": Vector3(-10, 0, 50), "LowerArm.L": Vector3(10, 0, 0), "LowerArm.R": Vector3(30, 0, 0),
+		"UpperLeg.L": Vector3(-6, 0, -6), "UpperLeg.R": Vector3(8, 0, 6), "LowerLeg.L": Vector3(-14, 0, 0), "LowerLeg.R": Vector3(-6, 0, 0),
+		"hips_pos": Vector3(0, -0.82, 0.30)}
+	return [[0.0, neutral], [0.14, stagger], [0.42, fallen], [0.60, fallen]]
 
 
 ## 사격: 오른팔을 앞으로 뻗어 조준(왼팔은 받침), 반동으로 살짝 뒤로, 복귀

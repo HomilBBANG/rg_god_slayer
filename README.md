@@ -12,13 +12,15 @@
 ## 실행
 
 1. Godot 4.7.2 에디터에서 **Import** → 이 폴더의 `project.godot` 선택.
-2. F5 (또는 ▶) 로 실행. 메인 씬은 `res://scenes/Main.tscn`.
+2. F5 (또는 ▶) 로 실행. 메인 씬은 **`res://scenes/BossTestArena.tscn`** (보스 전투 v0.3). 그래픽 안뜰 씬은 `res://scenes/Main.tscn` (에디터에서 열어 F6, 또는 CLI 에 경로 지정).
 3. 창은 1920×1080 으로 열립니다. 화면이 작으면 **F11** 로 전체화면 전환. 내부 뷰포트는 항상 1920×1080 (F12 캡처도 1080p).
 
 CLI:
 ```
-godot --path <이 폴더>            # 실행
-godot --path <이 폴더> -s tools/capture_runner.gd   # 자동 검증 + docs 캡처 재생성 (user://captures/)
+godot --path <이 폴더>            # 실행 (보스 테스트 아레나)
+godot --path <이 폴더> scenes/Main.tscn   # 그래픽 안뜰 씬 (더미, 무기 테스트)
+godot --path <이 폴더> -s tools/combat_test_runner.gd   # 보스 전투 자동 검증 (GDD §14) + 캡처 22~26
+godot --path <이 폴더> -s tools/capture_runner.gd   # 안뜰 자동 검증 + docs 캡처 재생성 (user://captures/)
 RED_ANIMVIEW=1 godot --path <이 폴더> -s tools/capture_runner.gd   # 옆/정면 직교 카메라로 Walk 사이클 8프레임·Idle 캡처 (애니메이션 검토용)
 ```
 
@@ -27,12 +29,15 @@ RED_ANIMVIEW=1 godot --path <이 폴더> -s tools/capture_runner.gd   # 옆/정�
 | 액션 | 키 | 기능 |
 |---|---|---|
 | `move_up / down / left / right` | ↑ ↓ ← → | **화면 기준** 이동, 대각선 정규화 |
-| `attack` | Z | 현재 무기로 공격. 검 = 0.30 s 휘두르기, 권총 = 단발, 라이플 = 누르고 있으면 연사. 사격은 이동 중에도 가능, 탄이 떨어지면 자동 재장전 |
+| `attack` | Z | 현재 무기로 공격. 검 = **빠른 3타 연계**(0.25 / 0.27 / 0.33 s, 피해 1/1/2, 추가 입력 버퍼 0.10 s, 공격 중 이동 35 %), 권총 = 단발, 라이플 = 누르고 있으면 연사. 사격은 이동 중에도 가능, 탄이 떨어지면 자동 재장전 |
+| `parry` | X | 패링. 치명적 패턴의 판단 창(0.20 s 현실 시간)에서 `parryable` 패턴에만 성공. 일반 패턴은 `parryable=true` 인 것만 패링 활성창(0.20 s)으로 판정 (현재 데이터엔 없음) |
+| `retry` | R | 사망/승리 화면에서 즉시 재도전 (보스·플레이어 위치, HP, 콤보, 입력 버퍼, 무적, 타임스케일, 카메라 전부 초기화) |
+| `debug_pattern_mode` / `_prev` / `_fire` / `_next` | F3 / F4 / F5 / F6 | 보스 패턴 테스트 메뉴: F3 자동 시퀀스 ↔ 수동, F4/F6 패턴 선택, F5 선택한 패턴 1개 실행 |
 | `quick_1`~`quick_5` | 1 ~ 5 | 퀵슬롯. 무기(1 검 / 2 권총 / 3 라이플)는 **즉시 교체**, 소모품(4 단검 / 5 폭탄)은 **즉시 사용**(던지기). 별도 퀵슬롯 UI 없음 — HUD 한 줄에 현재 무기·탄·소모품 수만 표시 |
 | `inventory` | I | 인벤토리 창 (일시정지). 아이템을 고른 뒤 1~5 키 또는 슬롯 버튼으로 퀵슬롯 등록 |
 | `equipment` | W | 장비 창 (일시정지). 근접/원거리 슬롯에 보유 무기 장비 |
 | `dodge` | Shift | 회피: 방향키 방향으로 짧은 점프. 입력 없으면 보는 방향 반대로 백스텝(시선 유지) |
-| `debug_toggle` | F1 | 디버그 정보 On/Off |
+| `debug_toggle` | F1 | 디버그 정보 + 전투 개발자 오버레이 On/Off (아레나에선 기본 On) |
 | `debug_light_cycle` | F2 | 태양 프리셋 순환 (기본 → 반대편 → 낮은 해) — A/B 비교용 |
 | `debug_fullscreen` | F11 | 전체화면 토글 |
 | `debug_screenshot` | F12 | 1920×1080 PNG 저장 → `user://captures/` |
@@ -52,7 +57,21 @@ game/
 │  ├─ TestCourtyard.tscn   # 스크립트가 런타임에 프리미티브로 맵을 조립
 │  └─ HitDummy.tscn        # StaticBody3D, 그룹 attack_targets, receive_hit()
 ├─ scripts/
-│  ├─ player_controller.gd # 이동/방향/공격/회피 상태 + 무기(근접 휘두르기·사격·던지기) + AnimationPlayer 재생
+│  ├─ player_controller.gd # 이동/방향/공격(3타)/회피/패링/시네마틱 회피/사망 상태 + 무기 + AnimationPlayer 재생
+│  ├─ boss_arena.gd       # 보스 테스트 아레나 지형 (평평한 돌 광장, 동쪽 돌담, 경계벽)
+├─ combat/                 # 보스 전투 v0.3 (GDD: docs/design/RED_BOSS_COMBAT_GDD_v0.3.md)
+│  ├─ boss_attack_patterns.json   # 패턴 데이터 (N01~N04, F01~F05, prototype_sequence)
+│  ├─ boss_attack_pattern.gd      # BossAttackPattern Resource (JSON → Resource)
+│  ├─ boss_pattern_library.gd     # JSON 로더
+│  ├─ combat_director.gd          # 전투 FSM, 패턴 선택(시퀀스/수동), 사망·승리·재시작, 로그(CSV)
+│  ├─ boss_controller.gd          # 보스: 접근, 예고 자세, 바닥 위험 영역, 유효 타격, 경직/그로기, HP
+│  ├─ danger_zone.gd              # 타격 폴리곤(부채꼴/원/통로/안전 쐐기를 뺀 원판) 시각 + 점 판정
+│  ├─ fatal_reaction_controller.gd # FOCUS → DECISION(0.20 s 현실) → RESOLVE → RECOVER, 단일 결정 확정
+│  ├─ combat_input_router.gd      # 새 키다운만(에코 제외) 행동+usec 으로 전달
+│  ├─ boss_hit_resolver.gd        # 플레이어 피격/즉사의 단일 권한
+│  ├─ attack_debug_overlay.gd     # 개발자 오버레이 (패턴, 허용 행동, 남은 ms, 입력/결과, 로그)
+│  └─ battle_result_controller.gd # 사망/승리 UI, R 안내
+├─ camera/combat_camera_director.gd # 보스 포커스 줌(15 → 9.5, 현실 시간), 주인공 프레임 유지, 복귀
 │  ├─ items.gd            # 아이템 DB (검/권총/라이플/단검/폭탄 수치)
 │  ├─ inventory.gd        # 보유 아이템·퀵슬롯·장비 슬롯·탄 상태 (signal changed)
 │  ├─ projectile.gd       # 탄환/단검(직선, 구간 레이캐스트) · 폭탄(포물선, 반경 폭발)
@@ -87,6 +106,58 @@ game/
 - 사격은 손(총구)에서 나가지만 캐릭터 중심선 5 m 앞 지점으로 수렴시켜 오른손 오프셋 때문에 빗나가지 않게 했습니다. 탄은 매 물리 틱 이동 구간을 레이캐스트해 빠른 탄도 관통하지 않습니다.
 - 근접 공격은 유효 타격이 끝나면 Shift 회피로 캔슬할 수 있습니다.
 - 손에 든 무기는 단순 박스 메시이며 오른손 뼈(`RightHand`)를 매 프레임 따라갑니다. 사격/던지기 상체 클립(`Shoot`/`Throw`)은 서 있을 때만 재생하고, 이동 중엔 걷기 애니메이션을 유지합니다 (속도 우선).
+
+## 보스 전투 (GDD v0.3 — `docs/design/RED_BOSS_COMBAT_GDD_v0.3.md`)
+
+기존 플레이어/카메라/그래픽 위에 `combat/` 모듈을 얹었습니다. 메인 씬 `BossTestArena.tscn` 에서 바로 보스전이 시작됩니다.
+
+**불변 조건 (구현 상태)**
+- 보스의 **모든** 명중 공격은 즉사 (일반/치명 구분 없음). HP 바와 무관하게 `BossHitResolver` 한 곳에서만 사망 전환.
+- 방향키 화면 기준 8방향 이동, Z 빠른 3타, X 패링.
+- 치명적 패턴: 예고(게임 시간) → **포커스 0.10 s 현실 시간** (카메라 Size 15 → 9.5, `Engine.time_scale = 0.18`) → **판단 0.20 s 현실 시간** → 결과 → 복귀 0.18 s 현실 시간 (Size 9.5 → 15, 속도 0.18 → 1.0).
+- 판정 시계는 `Time.get_ticks_usec()`. 슬로모션은 반응 창을 늘리지 않습니다. 판단 창이 열린 뒤의 **첫 신규 키다운**(에코 제외) 하나만 결정 입력이며, 미리 누르고 있던 키는 인정하지 않습니다. 첫 입력이 틀리면 재입력 기회 없음.
+- 패턴별 허용 행동/안전 방향/패링 가능 여부는 전부 `combat/boss_attack_patterns.json` 데이터 (`BossAttackPattern` Resource) 로 구분. 코드에 패턴별 `if` 없음.
+- 카메라는 회전하지 않습니다. 줌 중에도 방향키 기준은 최초 고정 화면 방향.
+- `requires_clear_destination` 패턴은 시작 전에 안전 방향 도착점(1.8 m)을 레이캐스트 + 구 검사로 확인하고, 막혀 있으면 그 패턴을 건너뜁니다 (로그에 `skipped`).
+
+**패턴** (JSON 그대로): N01 수평 전방 베기 / N02 직선 돌진 / N03 원형 바닥 충격 / N04 2연속 베기 / F01 왼쪽 쓸기(→만) / F02 오른쪽 찌르기(←만) / F03 낮은 횡단 베기(↑만) / F04 은색 반짝임 내려찍기(X만) / F05 낙하 강타(↓ 또는 X). 디버그 시퀀스 `N01 → N02 → F01 → N03 → F04 → N04 → F02 → F05 → F03 → 반복`.
+
+**보스**: HP 12, 피격 시 움찔만(패턴 중단 없음), 패링 성공 시 경직 0.60 s(또는 패턴의 후딜), 패링 3회 누적 시 그로기 1.2 s. 외형은 외곽선 없는 프리미티브 로우폴리(어두운 저채도)이며 패턴별 예고 자세(팔/검/상체 기울기)와 바닥의 흐릿한 붉은 위험 영역으로 공격 방향을 알립니다. 패링 가능 패턴만 검 끝에 은색 반짝임.
+
+**카메라**: 주시점 = 보스 65 % + 주인공 35 %, 주인공이 화면 10~90 % 안에 남도록 보정. 트윈은 현실 시간(usec) 기반.
+
+**개발자 오버레이** (F1): 전투/보스/플레이어 상태, 패턴 ID와 허용 행동, 판단 단계와 남은 ms, 마지막 입력·반응 ms·결과, 보스 HP/패링 수, 최근 로그. 판단 창 동안 허용 방향을 화면 가장자리 얇은 띠로, 패링 가능이면 상단 X 로 표시 (오버레이가 켜진 때만). 모든 판정은 `user://reaction_log.csv` 에도 기록됩니다.
+
+**검증 (GDD §14, `tools/combat_test_runner.gd`, 결과 전문 `docs/captures/combat_test_results.txt`)** — 실제 키 이벤트를 현실 시간 기준으로 주입. 두 조건 모두 **24/24 통과**.
+
+| 조건 | 결과 |
+|---|---|
+| 렌더 경량 설정, 상한 없음 (안정 시 ≈ 50 FPS) | 24/24 PASS |
+| `RED_FPS_CAP=30` (30 FPS 상한) | 24/24 PASS |
+
+| 테스트 | 기대 | 결과 |
+|---|---|---|
+| F01 → 를 판단 창 열림 후 ~125 ms 에 입력 (실제 키) | 회피 성공 | PASS (판정 142 ms) |
+| F01 → 를 232 ms 에 입력 (실제 키) | 사망 (timeout) | PASS |
+| F01 → 199 ms / 201 ms (합성 타임스탬프, 경계) | 성공 / 무시 → timeout 사망 | PASS / PASS |
+| F01 ← 또는 X | 사망 (wrong_action) | PASS / PASS |
+| F04 X ~150 ms | 패링 성공, 보스 STAGGER | PASS (판정 165 ms, parry_count 1) |
+| F04 방향키 | 사망 | PASS |
+| F05 ↓ / X | 둘 다 성공 (dodge / parry 로 결과 구분) | PASS / PASS |
+| F04 에서 X 를 판단 창 전부터 누르고 있음 | 자동 성공 없음 → timeout 사망 | PASS |
+| 첫 입력 ← 뒤 → | 첫 입력으로 확정 → 사망 | PASS |
+| Z 연타 중 F01 진입 | Z 취소(FATAL_DECISION), → 정상 성공 | PASS |
+| Z 3타 연계 (버퍼 입력) | 보스 HP 12 → 8 | PASS |
+| N01 범위 안 | 즉사 | PASS |
+| N01 예고 중 범위 밖으로 걷기 | 생존 | PASS |
+| → 도착점이 동쪽 돌담에 막힘 (x = 7.4) | F01 건너뜀 (`skipped: obstacle on path (WallEast)`) | PASS |
+| 성공/사망/재시작 후 | time_scale 1.0, Size 15, focus 해제 | PASS |
+| R 재도전 | 41 ms 안에 전부 초기화 | PASS |
+| 치명적 패턴 30회 반복 (F01/F04 교대) | 카메라·타임스케일 미복구 0건 | PASS (bad=0) |
+
+60 / 120 FPS 는 이 컨테이너(소프트웨어 Vulkan)에서 낼 수 없어 미검증. 판정은 `Time.get_ticks_usec()` 기반이라 프레임레이트와 무관하지만, 입력 이벤트가 프레임 시작에 처리되므로 저 FPS 에서는 키 눌림~판정 사이 지연(한 프레임)이 그대로 반응 시간에 더해집니다 (위 "125 ms 입력 → 142 ms 판정").
+
+**안뜰 씬의 무기 시스템과의 관계**: 아레나에서도 퀵슬롯/권총/라이플/소모품이 그대로 동작합니다 (GDD 는 Z 기본 근접만 규정하지만, 이전 요청으로 만든 무기는 제거하지 않았습니다). 보스 HP 12 기준 수치 검증은 검 3타(1/1/2)로 했습니다.
 
 ## 카메라 (`camera_follow.gd` export)
 

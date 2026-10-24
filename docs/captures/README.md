@@ -23,5 +23,12 @@
 | 19_bomb.png | 5 → 폭탄 투척 직후 |
 | 20_inventory.png | I 인벤토리 창 — 폭탄을 선택해 1번 키로 슬롯 1 등록 (일시정지) |
 | 21_equipment.png | W 장비 창 — 근접/원거리 슬롯 버튼 |
+| 22_f01_decision.png | F01 판단 창 (Size 9.5 확대, time_scale 0.18, 위험 영역 + 안전 쐐기, 오버레이 남은 ms) |
+| 23_f01_dodge.png | F01 → 성공 직후 시네마틱 회피 스텝 |
+| 24_death.png | 창 만료 사망 화면 (사유, 반응 ms, R 안내) |
+| 25_f04_decision.png | F04 판단 창 — 은색 반짝임, 패링 전용 |
+| 26_n01_windup.png | N01 예고 — 전방 부채꼴 위험 영역 |
+| combat_demo.mp4 | F01 회피 → F04 패링 → N01 피격 사망 (테스트 러너 프레임 녹화, RED_PIXEL_SCALE=3) |
+| combat_test_results.txt | 자동 검증 결과 (GDD §14) |
 
 재생성: `godot --path game -s tools/capture_runner.gd` → `user://captures/`

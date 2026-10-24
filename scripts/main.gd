@@ -28,6 +28,22 @@ var _screen_base: Vector2
 
 
 func _ready() -> void:
+	# 테스트/캡처용 환경 변수: RED_PIXEL_SCALE (렌더 배율), RED_NO_SHAFTS=1 (갓레이 끔)
+	var ps := OS.get_environment("RED_PIXEL_SCALE")
+	if ps != "":
+		camera_rig.pixel_scale = maxi(1, int(ps))
+		camera_rig._apply_camera_transform()
+	if OS.get_environment("RED_NO_SHAFTS") != "":
+		light_shafts.enabled = false
+	# RED_FAST=1: 소프트웨어 렌더(테스트 컨테이너)용 경량 설정 — 그림자/MSAA/잔디 끔. 판정 로직엔 영향 없음
+	if OS.get_environment("RED_FAST") != "":
+		world.msaa_3d = Viewport.MSAA_DISABLED
+		sun.shadow_enabled = false
+		light_shafts.enabled = false
+		for n in ["World/GrassField", "World/FlowerField"]:
+			var g := get_node_or_null(n)
+			if g:
+				g.visible = false
 	# SubViewport 크기와 화면 배율을 CameraRig 설정에서 가져온다
 	world.size = camera_rig.render_size()
 	var scale := float(camera_rig.pixel_scale)
@@ -44,7 +60,14 @@ func _process(_delta: float) -> void:
 	pixel_screen.position = _screen_base + camera_rig.subpixel_offset
 
 
+func _menus_allowed() -> bool:
+	var d := get_node_or_null("World/CombatDirector") as CombatDirector
+	return d == null or (d.can_open_menus() and not d.fatal.is_active())
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if (event.is_action_pressed("inventory") or event.is_action_pressed("equipment")) and not _menus_allowed():
+		return
 	if event.is_action_pressed("inventory"):
 		if inventory_window.visible:
 			inventory_window.close()

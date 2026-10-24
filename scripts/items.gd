@@ -8,7 +8,7 @@ const DB := {
 	"sword": {
 		"name": "검", "kind": Kind.MELEE,
 		"damage": 1, "range": 1.45, "cone_deg": 100.0,
-		"duration": 0.30, "windup": 0.07, "active_end": 0.16, "move_factor": 0.6,
+		"duration": 0.30, "windup": 0.07, "active_end": 0.16, "move_factor": 0.35,
 	},
 	"pistol": {
 		"name": "권총", "kind": Kind.RANGED,

@@ -62,7 +62,7 @@ offset_bottom = -40.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.85, 0.84, 0.8, 0.9)
 theme_override_font_sizes/font_size = 20
-text = "← ↑ ↓ → 이동   Z 공격   Shift 회피   1~5 퀵슬롯   I 인벤토리   W 장비"
+text = "← ↑ ↓ → 이동   Z 공격(3연타)   X 패링   Shift 회피   1~5 퀵슬롯   I 인벤토리   W 장비   R 재도전"
 
 [node name="Debug" type="Label" parent="Root"]
 visible = false
