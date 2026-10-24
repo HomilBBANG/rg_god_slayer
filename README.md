@@ -147,21 +147,24 @@ GDD 의 "외곽선 없음" 원칙과는 다른 방향이라, 두 값을 1.0 / 0.
 이동 3.4 m/s, 가속 12 m/s², 감속 18 m/s², 중력 9.8, 회전 보간 14/s.
 공격 0.38 s (준비 0~0.10, 유효 0.10~0.19, 복귀 ~0.38), 사거리 1.45 m + 더미 반경, 전방 100°, 공격 중 이동 40%, 한 공격당 더미 1회 타격.
 
-## 플레이어 캐릭터 (외부 모델 + 직접 리깅)
+## 플레이어 캐릭터 (제공 모델 + 리깅 보정 + 머리카락 뼈)
 
-`assets/character/player_rigged.glb` — 사용자가 제공한 스타일라이즈드 여성 캐릭터(Tripo 생성, 94만 tri, 무리깅)를 `tools/blender/rig_player.py` 로 처리한 것.
+`assets/character/player_rigged.glb` — 사용자가 제공한 Mixamo 뼈대 포함 Tripo 캐릭터(18.7k tri)를 `tools/blender/add_hair_bones.py` 로 처리한 것.
 
 ```
-blender -b -P tools/blender/rig_player.py -- <원본.glb> assets/character
+blender -b -P tools/blender/add_hair_bones.py -- <원본_rigged.glb> assets/character
 ```
 
-1. 1.70 m 스케일, 발바닥 z=0, 정면을 Godot −Z 로 회전
-2. Decimate(collapse) → **9,000 tri** (UV 유지)
-3. 휴머노이드 아마추어 19본: `Hips/Spine/Chest/Neck/Head`, `Shoulder/UpperArm/LowerArm/Hand .L/.R`, `UpperLeg/LowerLeg/Foot .L/.R` — 키 비율 휴리스틱으로 배치
-4. 정점 가중치: 각 뼈 선분까지의 거리 기반 역거리 가중(최대 3본). 비매니폴드 메시에서 Heat 가 실패하는 문제를 피하려고 직접 계산
-5. 베이스컬러 1024 PNG 별도 저장(`player_basecolor.png`), 머티리얼 `CharTex` → `mat_char.tres`(`RED_FlatLitTex`: 텍스처 × 밴드 조명, 채도 0.9)
+제공 파일의 문제: 스킨 가중치가 거의 전부 Hips 한 뼈에 0.99 로 묶여 있고(아마추어를 켜면 메시가 찢어짐), 뼈대 프레임이 메시와 90° 회전 + 이동 + 기울기로 어긋나 있었습니다. 그래서:
 
-애니메이션은 AnimationPlayer 없이 `player_controller.gd` 가 매 틱 `Skeleton3D.set_bone_pose_rotation/position` 으로 구동합니다. 회전은 **모델 공간 오일러**로 쓰고 `_pose()` 가 `rest_global⁻¹ · R · rest_global` 로 뼈 로컬에 옮기므로 뼈 롤을 신경 쓰지 않아도 됩니다 (부모 뼈 움직임은 자동 상속). 이전 박스/로우폴리 모델(`assets/environment/player_red.glb`)은 남겨 두었습니다.
+1. 메시 Rz(180°)·뼈 Rz(90°) 로 정면을 Godot −Z 에 맞추고 1.70 m, 발 z=0
+2. `mixamorig:` 접두어 제거, 손가락/끝 뼈 삭제 (30본)
+3. **뼈 위치를 메시 단면 통계로 재피팅** (허리/척추/가슴/목/얼굴 중심, 좌우 무릎·발목·어깨·팔꿈치·손 군집)
+4. **머리카락 정점을 베이스컬러 텍스처의 붉은색으로 판별** (+ 허리 아래·팔다리 근처 제외) → `HairBack1~4`(뒤통수→허리 체인, 중심선은 뒷머리 군집 평균), `HairL1~2 / HairR1~2`(양옆 앞가닥). 부모 = Head
+5. 가중치: 몸은 뼈 선분 거리 기반, 머리카락은 체인 z 보간(뿌리는 Head 와 블렌드), 머리카락/몸 경계 2-링을 3회 라플라시안 스무딩
+6. 베이스컬러 1024 PNG 분리, 스킨 포함 glb 내보내기. `docs/captures/15_rig_check_*.png` 는 Blender 에서 머리카락 뼈를 10° 돌린 검증 렌더
+
+`player_controller.gd` 는 `BONE_MAP`(논리 이름 → Mixamo 이름)으로 뼈를 찾고 `_pose()` 가 모델 공간 회전을 뼈 로컬로 변환합니다. **머리카락 흔들림**은 `_animate_hair()`: 캐릭터 로컬 가속도(앞뒤)와 회전 속도(좌우)를 뿌리 목표 각도로 바꾸고, 체인의 각 뼈가 앞 뼈를 `hair_follow` 비율로 따라가는 스프링-댐퍼(`hair_stiffness 60`, `hair_damping 7`) + 미세한 바람. 멈추면 되돌아오고, 달리면 뒤로 눕고, 돌면 바깥으로 쏠립니다.
 
 ## 환경 에셋 (Blender 절차 생성)
 

@@ -58,9 +58,33 @@ var _rest_local: Dictionary = {}   # 뼈 로컬 rest 회전
 var _rest_global: Dictionary = {}  # 모델 공간 rest 회전
 var _hips_rest_pos: Vector3
 
-const BONES := ["Hips", "Spine", "Chest", "Neck", "Head",
-	"Shoulder.L", "UpperArm.L", "LowerArm.L", "Hand.L", "Shoulder.R", "UpperArm.R", "LowerArm.R", "Hand.R",
-	"UpperLeg.L", "LowerLeg.L", "Foot.L", "UpperLeg.R", "LowerLeg.R", "Foot.R"]
+## 논리 이름 → 실제 뼈 이름. 모델이 바뀌면 여기만 고친다 (현재: Mixamo 이름, 접두어 제거됨)
+const BONE_MAP := {
+	"Hips": "Hips", "Spine": "Spine", "Chest": "Spine2", "Neck": "Neck", "Head": "Head",
+	"Shoulder.L": "LeftShoulder", "UpperArm.L": "LeftArm", "LowerArm.L": "LeftForeArm", "Hand.L": "LeftHand",
+	"Shoulder.R": "RightShoulder", "UpperArm.R": "RightArm", "LowerArm.R": "RightForeArm", "Hand.R": "RightHand",
+	"UpperLeg.L": "LeftUpLeg", "LowerLeg.L": "LeftLeg", "Foot.L": "LeftFoot",
+	"UpperLeg.R": "RightUpLeg", "LowerLeg.R": "RightLeg", "Foot.R": "RightFoot",
+}
+## 머리카락 체인 (뿌리 → 끝). 각 체인은 스프링-댐퍼로 흔들린다.
+const HAIR_CHAINS := [["HairBack1", "HairBack2", "HairBack3", "HairBack4"], ["HairL1", "HairL2"], ["HairR1", "HairR2"]]
+
+@export_group("Hair")
+## 흔들림 강도: 가속도(m/s²) → 뿌리 각도(도)
+@export var hair_accel_gain: float = 4.5
+## 회전 속도(rad/s) → 옆으로 쏠리는 각도(도)
+@export var hair_turn_gain: float = 10.0
+@export var hair_stiffness: float = 60.0
+@export var hair_damping: float = 7.0
+## 체인 뒤쪽 뼈가 앞 뼈를 따라가는 비율 (>1 이면 끝이 더 크게 휘어짐)
+@export var hair_follow: float = 1.15
+@export var hair_max_deg: float = 38.0
+@export var hair_breeze_deg: float = 2.0
+
+var _hair_angle: Dictionary = {}   # bone → Vector2(pitch, roll) 도
+var _hair_vel: Dictionary = {}
+var _prev_vel_local: Vector2 = Vector2.ZERO
+var _prev_yaw: float = 0.0
 
 
 func _ready() -> void:
@@ -77,18 +101,29 @@ func _setup_skeleton() -> void:
 		push_error("[Player] Skeleton3D not found in model")
 		return
 	_skel = found[0] as Skeleton3D
-	for n in BONES:
-		var i := _skel.find_bone(n)
-		if i < 0:
-			push_warning("[Player] bone missing: %s" % n)
-			continue
-		_b[n] = i
-		_rest_local[n] = _skel.get_bone_rest(i).basis.get_rotation_quaternion()
-		_rest_global[n] = _skel.get_bone_global_rest(i).basis.get_rotation_quaternion()
+	for n in BONE_MAP.keys():
+		_register_bone(n, BONE_MAP[n])
+	for chain in HAIR_CHAINS:
+		for n in chain:
+			if _register_bone(n, n):
+				_hair_angle[n] = Vector2.ZERO
+				_hair_vel[n] = Vector2.ZERO
 	_hips_rest_pos = _skel.get_bone_rest(_b["Hips"]).origin
+	_prev_yaw = visual_root.rotation.y
 	# 모델 메시는 그림자를 드리운다
 	for mi in _model.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+func _register_bone(logical: String, actual: String) -> bool:
+	var i := _skel.find_bone(actual)
+	if i < 0:
+		push_warning("[Player] bone missing: %s (%s)" % [actual, logical])
+		return false
+	_b[logical] = i
+	_rest_local[logical] = _skel.get_bone_rest(i).basis.get_rotation_quaternion()
+	_rest_global[logical] = _skel.get_bone_global_rest(i).basis.get_rotation_quaternion()
+	return true
 
 
 ## 모델 공간 오일러(도) 회전을 뼈에 적용. 부모 뼈의 움직임은 그대로 따라간다.
@@ -163,6 +198,7 @@ func _physics_process(delta: float) -> void:
 	_apply_facing(delta, false)
 	if _skel:
 		_animate(delta, horizontal.length() / move_speed)
+		_animate_hair(delta, horizontal)
 
 
 ## 입력 벡터(화면 기준) → 월드 XZ 방향. ↑ = 화면 위 = 카메라 전방 투영.
@@ -339,6 +375,43 @@ func _animate_dodge() -> void:
 	_pose("UpperArm.L", Vector3(-tuck * 0.6 * _dodge_lean, 0, -tuck * 0.5))
 	_pose("UpperArm.R", Vector3(-tuck * 0.6 * _dodge_lean, 0, tuck * 0.5))
 	_hips_offset(crouch)
+
+
+## 머리카락: 캐릭터 가속도·회전에 뒤처지는 스프링-댐퍼 체인.
+## 모델 공간에서 pitch(x) = 앞뒤 흔들림(+ 는 끝이 앞으로), roll(z) = 좌우 흔들림.
+func _animate_hair(delta: float, horizontal_vel: Vector3) -> void:
+	if _hair_angle.is_empty() or delta <= 0.0:
+		return
+	# 속도를 캐릭터 로컬(앞/오른쪽)로: 정면 = -Z 모델 → 월드에서는 facing
+	var yaw := visual_root.rotation.y
+	var fwd := Vector3(-sin(yaw), 0.0, -cos(yaw))
+	var right := Vector3(cos(yaw), 0.0, -sin(yaw))
+	var vel_local := Vector2(horizontal_vel.dot(right), horizontal_vel.dot(fwd))
+	var accel := (vel_local - _prev_vel_local) / delta
+	_prev_vel_local = vel_local
+	var yaw_rate := wrapf(yaw - _prev_yaw, -PI, PI) / delta
+	_prev_yaw = yaw
+	# 뿌리 목표: 앞으로 가속하면 머리카락은 뒤로(끝이 뒤 = pitch −), 달리는 동안도 살짝 뒤로.
+	var breeze := sin(_idle_phase * 1.7) * hair_breeze_deg
+	var root_target := Vector2(
+		clampf(-accel.y * hair_accel_gain - vel_local.y * 1.2, -hair_max_deg, hair_max_deg) + breeze,
+		clampf(yaw_rate * hair_turn_gain + accel.x * hair_accel_gain * 0.6, -hair_max_deg, hair_max_deg))
+	for chain in HAIR_CHAINS:
+		var target := root_target
+		for n in chain:
+			if not _hair_angle.has(n):
+				continue
+			var a: Vector2 = _hair_angle[n]
+			var v: Vector2 = _hair_vel[n]
+			v += (target - a) * hair_stiffness * delta - v * hair_damping * delta
+			a += v * delta
+			a.x = clampf(a.x, -hair_max_deg, hair_max_deg)
+			a.y = clampf(a.y, -hair_max_deg, hair_max_deg)
+			_hair_angle[n] = a
+			_hair_vel[n] = v
+			# 각 뼈는 자기 각도만 더한다 (부모 회전은 뼈 계층이 상속) — 체인 끝으로 갈수록 누적
+			_pose(n, Vector3(a.x * 0.45, 0.0, a.y * 0.45))
+			target = a * hair_follow
 
 
 func state_name() -> String:
