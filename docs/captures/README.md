@@ -17,5 +17,6 @@
 | 13_character_closeup.png | 리깅된 주인공 클로즈업 (Idle / Walk / Attack / Dodge, 320px 영역 ×2 확대) |
 | 14_source_model_front.png | 제공받은 원본 모델 Blender 프리뷰 (리깅 전) |
 | 15_rig_check_front/side/back.png | 머리카락 뼈를 10° 돌린 Blender 검증 렌더 (스킨 변형 확인) |
+| 16_walk_idle_cycle.png | Walk 사이클 3프레임 + Idle 2프레임 클로즈업 |
 
 재생성: `godot --path game -s tools/capture_runner.gd` → `user://captures/`

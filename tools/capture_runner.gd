@@ -157,6 +157,21 @@ func _process(_delta: float) -> bool:
 			if _frames - _frames_attack == 24:
 				_cap("12_shafts_grass.png"); _step = 22
 		22:
+			# 보행 사이클 확인: 오른쪽으로 걷는 동안 4프레임 간격 캡처 3장
+			_player.global_position = Vector3(-9.0, 0.3, 6.0)
+			_player.velocity = Vector3.ZERO
+			Input.action_press("move_right")
+			_step = 23; _frames_attack = _frames
+		23:
+			if _frames - _frames_attack == 10: _cap("16_walk_a.png")
+			if _frames - _frames_attack == 13: _cap("16_walk_b.png")
+			if _frames - _frames_attack == 16: _cap("16_walk_c.png")
+			if _frames - _frames_attack > 18:
+				_release_all(); _step = 24; _frames_attack = _frames
+		24:
+			if _frames - _frames_attack == 20: _cap("17_idle_a.png")
+			if _frames - _frames_attack == 40: _cap("17_idle_b.png"); _step = 25
+		25:
 			print("[runner] done, frames=%d" % _frames)
 			quit(0)
 			return true
