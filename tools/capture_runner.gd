@@ -16,7 +16,10 @@ func _initialize() -> void:
 	current_scene = _main
 	_player = _main.get_node("World/Player")
 	print("[runner] main scene loaded")
-	if OS.get_environment("RED_QUICK") != "":
+	if OS.get_environment("RED_ANIMVIEW") != "":
+		_step = 30
+		print("[runner] anim view mode")
+	elif OS.get_environment("RED_QUICK") != "":
 		_step = 20
 		print("[runner] quick mode")
 
@@ -175,9 +178,62 @@ func _process(_delta: float) -> bool:
 			print("[runner] done, frames=%d" % _frames)
 			quit(0)
 			return true
+		30:
+			# 임시 카메라: 플레이어 옆(+X)과 앞(-Z)에서 직교, 클립을 직접 seek 해 사이클 프레임 캡처
+			if _frames < 5:
+				return false
+			_player.global_position = Vector3(-8.0, 0.3, 6.0)
+			_player.velocity = Vector3.ZERO
+			var cam := Camera3D.new()
+			cam.name = "AnimViewCam"
+			cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+			cam.size = 2.2
+			_main.get_node("World").add_child(cam)
+			_view_cam = cam
+			_anim_player = _player.get_node("AnimationPlayer")
+			_anim_player.playback_default_blend_time = 0.0
+			_step = 31; _view_i = 0
+		31:
+			var clip := "Walk"
+			var n := 8
+			if _view_i >= n * 2:
+				_step = 32; _view_i = 0
+				return false
+			var side := _view_i < n
+			var k := _view_i % n
+			var base: Vector3 = _player.global_position + Vector3(0, 0.95, 0)
+			if side:
+				_view_cam.global_position = base + Vector3(4.0, 0.0, 0.0)
+			else:
+				_view_cam.global_position = base + Vector3(2.5, 0.0, -3.2)
+			_view_cam.look_at(base, Vector3.UP)
+			_view_cam.current = true
+			_anim_player.play(clip, 0.0)
+			_anim_player.seek(float(k) / float(n) * _anim_player.get_animation(clip).length, true)
+			if _frames % 2 == 0:
+				_cap("20_walk_%s_%d.png" % ["side" if side else "front", k])
+				_view_i += 1
+		32:
+			var base: Vector3 = _player.global_position + Vector3(0, 0.95, 0)
+			_view_cam.global_position = base + Vector3(2.5, 0.0, -3.2)
+			_view_cam.look_at(base, Vector3.UP)
+			_anim_player.play("Idle", 0.0)
+			_anim_player.seek(float(_view_i) * 1.5, true)
+			if _frames % 2 == 0:
+				_cap("21_idle_front_%d.png" % _view_i)
+				_view_i += 1
+			if _view_i >= 4:
+				print("[runner] done, frames=%d" % _frames)
+				quit(0)
+				return true
+			quit(0)
+			return true
 	return false
 
 var _frames_attack: int = 0
+var _view_cam: Camera3D
+var _anim_player: AnimationPlayer
+var _view_i: int = 0
 var _attack_captured: bool = false
 
 func _drive_toward(to: Vector3) -> void:

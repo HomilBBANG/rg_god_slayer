@@ -7,7 +7,7 @@ class_name AnimBuilder
 extends RefCounted
 
 const FPS := 30.0
-const WALK_CYCLE := 0.62   # 두 걸음 (초) — 보폭 ~1.4 m × 2 / 4.8 m/s
+const WALK_CYCLE := 0.56   # 두 걸음 (초) — 보폭 ~0.85 m × 2 ≈ 1.7 m / 3.8 m/s ≈ 0.45 s (살짝 느리게 잡아 급한 느낌 완화)
 const IDLE_CYCLE := 6.0
 const ATTACK_LEN := 0.30
 const DODGE_LEN := 0.40
@@ -45,40 +45,62 @@ func build_library() -> AnimationLibrary:
 # ---------------------------------------------------------------- 포즈 설계
 # 반환: {"bone": Vector3(x,y,z) 도, ..., "hips_pos": Vector3 오프셋(m)}
 
-## 보행 사이클. t∈[0,1): 0 = 왼발 접지, 0.5 = 오른발 접지.
-## 접지→하강(무릎 살짝 굽힘)→통과(골반 최고, 반대 다리 무릎 최대 굽힘)→상승→반대발 접지
+## 보행 사이클. t∈[0,1): 0 = 왼발 뒤꿈치 접지, 0.5 = 오른발 접지.
+## 관절각은 임상 보행 데이터 형태를 근사: 고관절 +30°(접지)→−15°(발끝 떼기 60%)→+30°,
+## 무릎 접지 5° → 하중기 18°(12%) → 중간입각 5°(40%) → 발끝 떼기 40°(60%) → 스윙 최대 62°(72%) → 5°,
+## 발목 발끝 떼기(58%)에 저측굴곡 −18°, 접지 직전 배측굴곡 +6°.
 func _walk_pose(t: float) -> Dictionary:
 	var w := TAU * t
 	var p := {}
-	# 허벅지: 앞뒤 스윙 ±30°, 접지 직전이 최대 앞
-	var thigh := 27.0 * cos(w) + 3.0
-	p["UpperLeg.L"] = Vector3(thigh, 0.0, -2.0)
-	p["UpperLeg.R"] = Vector3(-thigh, 0.0, 2.0)
-	# 무릎: 스윙 중(다리가 뒤에서 앞으로 올 때) 최대 55°, 접지 하중기에 12°
-	p["LowerLeg.L"] = Vector3(-(8.0 + 34.0 * pow(maxf(0.0, sin(w - PI)), 1.6) + 8.0 * maxf(0.0, cos(w + 0.6))), 0.0, 0.0)
-	p["LowerLeg.R"] = Vector3(-(8.0 + 34.0 * pow(maxf(0.0, sin(w)), 1.6) + 8.0 * maxf(0.0, cos(w + PI + 0.6))), 0.0, 0.0)
-	# 발: 뒤로 차고 나갈 때 발끝 내림(+), 접지 직전 발끝 들림(−)
-	p["Foot.L"] = Vector3(14.0 * sin(w + 0.3) - 4.0, 0.0, 0.0)
-	p["Foot.R"] = Vector3(14.0 * sin(w + PI + 0.3) - 4.0, 0.0, 0.0)
-	# 골반: 통과기에 높고 접지에 낮음(주기 2배), 지지 다리 쪽으로 좌우 이동, 앞 다리 쪽이 앞으로 회전
-	p["hips_pos"] = Vector3(-0.018 * sin(w), -0.022 * cos(2.0 * w) - 0.01, 0.0)
-	p["Hips"] = Vector3(0.0, -7.0 * cos(w), 3.0 * sin(w))
-	# 상체: 앞으로 살짝 숙이고 골반 반대 방향으로 비틀기 (팔 스윙과 같은 방향)
-	p["Spine"] = Vector3(-4.0, 3.0 * cos(w), -1.5 * sin(w))
-	p["Chest"] = Vector3(-2.0 + 1.0 * cos(2.0 * w), 5.0 * cos(w), -1.0 * sin(w))
+	p["UpperLeg.L"] = Vector3(_hip_curve(t), 0.0, -2.0)
+	p["UpperLeg.R"] = Vector3(_hip_curve(t + 0.5), 0.0, 2.0)
+	p["LowerLeg.L"] = Vector3(-_knee_curve(t), 0.0, 0.0)
+	p["LowerLeg.R"] = Vector3(-_knee_curve(t + 0.5), 0.0, 0.0)
+	p["Foot.L"] = Vector3(_ankle_curve(t), 0.0, 0.0)
+	p["Foot.R"] = Vector3(_ankle_curve(t + 0.5), 0.0, 0.0)
+	# 골반: 중간입각(25%, 75%)에 가장 높고 접지(0, 50%)에 낮음. 지지 다리 쪽으로 좌우 이동(최대 2 cm),
+	# 스윙 다리 쪽이 앞으로 회전(±5°), 스윙 다리 쪽 골반이 살짝 내려감(경사 ±3°)
+	p["hips_pos"] = Vector3(-0.02 * sin(w), 0.02 * (1.0 - cos(2.0 * w)) * 0.5 - 0.012, 0.0)
+	p["Hips"] = Vector3(0.0, -5.0 * cos(w), 3.0 * sin(w))
+	# 상체: 앞으로 4° 숙이고 골반 반대로 비틀기(어깨 ±5°), 접지 충격마다 미세 끄덕임
+	p["Spine"] = Vector3(-3.0, 3.0 * cos(w), -1.5 * sin(w))
+	p["Chest"] = Vector3(-1.5 + 0.8 * cos(2.0 * w), 4.0 * cos(w), -1.0 * sin(w))
 	p["Neck"] = Vector3(1.0, -2.0 * cos(w), 0.0)
-	p["Head"] = Vector3(2.0 - 1.0 * cos(2.0 * w), -3.0 * cos(w), 0.0)
-	# 팔: 다리와 반대 위상, 앞으로 올 때 팔꿈치 더 굽힘, 살짝 벌림
-	var arm := 26.0 * cos(w)
+	p["Head"] = Vector3(2.0 - 0.8 * cos(2.0 * w), -2.5 * cos(w), 0.0)
+	# 팔: 다리 반대 위상, 앞 +22 / 뒤 −18, 앞으로 올 때 팔꿈치 더 굽힘, 몸에서 살짝 벌림
+	var armL := -(2.0 + 20.0 * cos(w))
+	var armR := -(2.0 + 20.0 * cos(w + PI))
 	p["Shoulder.L"] = Vector3(0.0, 2.0 * cos(w), 0.0)
 	p["Shoulder.R"] = Vector3(0.0, 2.0 * cos(w), 0.0)
-	p["UpperArm.L"] = Vector3(-arm - 2.0, 0.0, -7.0)
-	p["UpperArm.R"] = Vector3(arm - 2.0, 0.0, 7.0)
-	p["LowerArm.L"] = Vector3(14.0 + 16.0 * maxf(0.0, -cos(w)), 0.0, 0.0)
-	p["LowerArm.R"] = Vector3(14.0 + 16.0 * maxf(0.0, cos(w)), 0.0, 0.0)
+	p["UpperArm.L"] = Vector3(armL, 0.0, -6.0)
+	p["UpperArm.R"] = Vector3(armR, 0.0, 6.0)
+	p["LowerArm.L"] = Vector3(14.0 + 14.0 * maxf(0.0, -cos(w)), 0.0, 0.0)
+	p["LowerArm.R"] = Vector3(14.0 + 14.0 * maxf(0.0, cos(w)), 0.0, 0.0)
 	p["Hand.L"] = Vector3(0.0, 0.0, 0.0)
 	p["Hand.R"] = Vector3(0.0, 0.0, 0.0)
 	return p
+
+
+## 종 모양 범프 (중심 c, 폭 w, 주기 1 래핑)
+static func _bump(t: float, c: float, w: float) -> float:
+	var d := fmod(t - c + 1.5, 1.0) - 0.5
+	return exp(-(d * d) / (w * w * 0.5))
+
+
+static func _hip_curve(t: float) -> float:
+	# +30 접지 → −15 (60%) → +30. 코사인 기반에 비대칭 보정
+	var w := TAU * fmod(t, 1.0)
+	return 7.5 + 22.5 * cos(w) + 4.0 * _bump(t, 0.1, 0.12)
+
+
+static func _knee_curve(t: float) -> float:
+	var tt := fmod(t, 1.0)
+	return 5.0 + 13.0 * _bump(tt, 0.12, 0.08) + 24.0 * _bump(tt, 0.60, 0.07) + 57.0 * _bump(tt, 0.74, 0.10)
+
+
+static func _ankle_curve(t: float) -> float:
+	var tt := fmod(t, 1.0)
+	return -18.0 * _bump(tt, 0.58, 0.07) + 6.0 * _bump(tt, 0.98, 0.06) - 4.0 * _bump(tt, 0.80, 0.08)
 
 
 ## 대기: 호흡(3 s) + 느린 체중 이동/둘러보기(6 s)

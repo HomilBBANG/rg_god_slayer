@@ -11,7 +11,7 @@ extends CharacterBody3D
 enum State { IDLE, WALK, ATTACK, DODGE }
 
 @export_group("Movement")
-@export var move_speed: float = 4.8
+@export var move_speed: float = 3.8
 @export var acceleration: float = 40.0
 @export var deceleration: float = 48.0
 @export var gravity: float = 9.8
@@ -192,10 +192,10 @@ func _physics_process(delta: float) -> void:
 func _update_animation(speed: float) -> void:
 	match state:
 		State.WALK:
-			_play("Walk", clampf(speed / move_speed, 0.35, 1.4))
+			_play("Walk", clampf(speed / move_speed * 1.12, 0.35, 1.5))
 		State.IDLE:
 			if speed > 0.4:
-				_play("Walk", clampf(speed / move_speed, 0.35, 1.4))
+				_play("Walk", clampf(speed / move_speed * 1.12, 0.35, 1.5))
 			else:
 				_play("Idle")
 		State.ATTACK:

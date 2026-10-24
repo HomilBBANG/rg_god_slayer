@@ -114,11 +114,15 @@ def side_center(z0, z1, side, min_off, fallback):
 
 fit = {"Hips": (spine0, Vector((cx, cy, 0.61 * H))), "Spine": (Vector((cx, cy, 0.61 * H)), spine1), "Spine1": (spine1, spine2), "Spine2": (spine2, chest),
        "Neck": (neck, Vector((neck.x, neck.y, 0.86 * H))), "Head": (head_b, head_t)}
+# 사람 비율: 대전자(고관절) ≈ 0.53H, 무릎 ≈ 0.285H, 발목 ≈ 0.045H
 for side, sx in (("L", -1), ("R", 1)):
-    hip = Vector((cx + sx * 0.055 * H, cy, 0.56 * H))
-    knee = side_center(0.30 * H, 0.35 * H, side, 0.0, Vector((cx + sx * 0.06 * H, cy, 0.325 * H))); knee.z = 0.325 * H
-    ankle = side_center(0.05 * H, 0.10 * H, side, 0.0, Vector((cx + sx * 0.07 * H, cy, 0.075 * H))); ankle.z = 0.06 * H
-    toe = Vector((ankle.x, ankle.y + 0.08 * H, 0.015 * H))
+    hip = Vector((cx + sx * 0.052 * H, cy + 0.01 * H, 0.53 * H))
+    knee = side_center(0.26 * H, 0.31 * H, side, 0.0, Vector((cx + sx * 0.06 * H, cy, 0.285 * H))); knee.z = 0.285 * H
+    # 무릎은 발목·고관절보다 살짝 앞 (자연스러운 굽힘 방향), 통바지 폭에 끌리지 않게 x 는 고관절과 발목 사이로 제한
+    ankle = side_center(0.03 * H, 0.08 * H, side, 0.0, Vector((cx + sx * 0.07 * H, cy, 0.055 * H))); ankle.z = 0.045 * H
+    knee.x = (hip.x + ankle.x) * 0.5 + (knee.x - (hip.x + ankle.x) * 0.5) * 0.3
+    knee.y = (hip.y + ankle.y) * 0.5 + 0.015 * H
+    toe = Vector((ankle.x, ankle.y + 0.09 * H, 0.012 * H))
     fit[side_name := ("Left" if side == "L" else "Right") + "UpLeg"] = (hip, knee)
     fit[("Left" if side == "L" else "Right") + "Leg"] = (knee, ankle)
     fit[("Left" if side == "L" else "Right") + "Foot"] = (ankle, toe)
@@ -238,39 +242,8 @@ def centerline(pts, zs):
     return out
 
 
-z_bot = min(p.z for p in back_pts) if back_pts else head_z - 0.45 * H
-z_bot = max(z_bot, head_z - 0.50 * H)
-z_top = head_z + 0.02 * H
-chain_z = [z_top - (z_top - z_bot) * k / 4.0 for k in range(5)]
-chain_pts = centerline(back_pts, chain_z) if back_pts else [Vector((0, center_y - 0.08 * H, z)) for z in chain_z]
-chain_pts[0] = Vector((head_pos.x, head_pos.y - 0.05 * H, chain_z[0]))
+# (머리카락 전용 뼈 없음 — 머리카락은 높이에 따라 Head/Spine2/Spine 으로 블렌드)
 hair_bones = []
-parent = head
-for i in range(4):
-    b = eb.new("HairBack%d" % (i + 1))
-    b.head = chain_pts[i]
-    b.tail = chain_pts[i + 1]
-    b.parent = parent
-    b.use_connect = False
-    parent = b
-    hair_bones.append(b.name)
-    print("[hair] %s %s -> %s" % (b.name, tuple(round(v, 3) for v in b.head), tuple(round(v, 3) for v in b.tail)))
-side_z = {}
-for side in ("L", "R"):
-    pts = side_pts[side]
-    zb = max(min(p.z for p in pts) if pts else head_z - 0.3 * H, head_z - 0.40 * H)
-    zs = [head_z - 0.02 * H, (head_z - 0.02 * H + zb) * 0.5, zb]
-    side_z[side] = zs
-    cps = centerline(pts, zs) if pts else [Vector(((-1 if side == "L" else 1) * 0.09 * H, center_y, z)) for z in zs]
-    parent = head
-    for i in range(2):
-        b = eb.new("Hair%s%d" % (side, i + 1))
-        b.head = cps[i]
-        b.tail = cps[i + 1]
-        b.parent = parent
-        b.use_connect = False
-        parent = b
-        hair_bones.append(b.name)
 segs = {b.name: (b.head.copy(), b.tail.copy()) for b in eb}
 bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -320,27 +293,27 @@ def chain_weights(z, names, zs):
     return w
 
 
-n_back = n_side = n_scalp = 0
-back_names = ["HairBack1", "HairBack2", "HairBack3", "HairBack4"]
+n_hair = 0
+z_head = head_pos.z
+z_chest = segs["Spine2"][0].z
+z_spine = segs["Spine"][0].z
 for v in me.vertices:
     p = v.co
     if is_hair[v.index]:
-        if p.z >= head_z:
+        # 두피/뒤통수 → Head, 어깨~가슴 → Spine2, 허리 → Spine. 구간 사이는 선형 블렌드 (튀는 경계 없음)
+        if p.z >= z_head - 0.02 * H:
             w = {"Head": 1.0}
-            n_scalp += 1
-        elif is_back(p):
-            w = chain_weights(p.z, back_names, chain_z)
-            n_back += 1
-        elif abs(p.x - center_x) > 0.03 * H:
-            side = "L" if p.x < center_x else "R"
-            w = chain_weights(p.z, ["Hair%s1" % side, "Hair%s2" % side], side_z[side])
-            n_side += 1
+        elif p.z >= z_chest:
+            t = (z_head - 0.02 * H - p.z) / max(z_head - 0.02 * H - z_chest, 1e-6)
+            w = {"Head": 1.0 - t, "Spine2": t}
+        elif p.z >= z_spine:
+            t = (z_chest - p.z) / max(z_chest - z_spine, 1e-6)
+            w = {"Spine2": 1.0 - t, "Spine": t}
         else:
-            # 머리 아래 중앙 앞(얼굴 앞 머리카락 등) → Head
-            w = {"Head": 1.0}
-            n_scalp += 1
+            w = {"Spine": 1.0}
         for n, ww in w.items():
             vg[n].add([v.index], ww, "REPLACE")
+        n_hair += 1
         continue
     ds = sorted(((seg_dist(p, *segs[n]) / radius[n], n) for n in body_names))
     best = ds[0][0]
@@ -349,7 +322,7 @@ for v in me.vertices:
     tot = sum(ws)
     for (d, n), w in zip(cand, ws):
         vg[n].add([v.index], w / tot, "REPLACE")
-print("[hair] weights: back", n_back, "side", n_side, "scalp/head", n_scalp)
+print("[hair] hair verts blended Head/Spine2/Spine:", n_hair)
 
 # ---- 4b. 경계 스무딩: 머리카락/몸 경계에서 가중치가 뚝 끊기며 찢어지는 것을 막는다
 #   머리카락 정점과 그 2-링 이웃에 대해 이웃 평균과 섞기 (3회)
@@ -409,7 +382,7 @@ me.materials.append(mat)
 # ---- 검증 렌더 (export 전): 정면(+Y 에서), 옆, 뒤 — 뒷머리 뼈를 살짝 흔든 포즈로
 bpy.context.view_layer.objects.active = arm
 bpy.ops.object.mode_set(mode="POSE")
-for nm, ang in (("HairBack1", 8.0), ("HairBack2", 10.0), ("HairBack3", 10.0), ("HairBack4", 8.0), ("HairL1", 10.0), ("HairL2", 12.0), ("HairR1", 10.0), ("HairR2", 12.0)):
+for nm, ang in (("Spine", 6.0), ("Spine2", 6.0), ("Head", 8.0)):
     pb = arm.pose.bones[nm]
     pb.rotation_mode = "XYZ"
     pb.rotation_euler = (math.radians(ang), 0, 0)
