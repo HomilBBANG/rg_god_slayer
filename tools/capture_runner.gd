@@ -175,6 +175,94 @@ func _process(_delta: float) -> bool:
 			if _frames - _frames_attack == 20: _cap("17_idle_a.png")
 			if _frames - _frames_attack == 40: _cap("17_idle_b.png"); _step = 25
 		25:
+			# ---- 무기 테스트: 더미01(-3.5, 3.5) 의 동쪽 4 m 에서 서쪽을 보고 권총 사격
+			_release_all()
+			_player.global_position = Vector3(0.5, 0.3, 3.5)
+			_player.velocity = Vector3.ZERO
+			_player.facing = Vector3(-1, 0, 0)
+			_dummy_hits0 = _main.get_node("World/HitDummies/HitDummy01").hit_count
+			Input.action_press("quick_2")
+			_step = 26; _frames_attack = _frames
+		26:
+			Input.action_release("quick_2")
+			if _frames - _frames_attack in [3, 9, 15]:
+				Input.action_press("attack")
+			elif _frames - _frames_attack in [4, 10, 16]:
+				Input.action_release("attack")
+			if _frames - _frames_attack == 4:
+				for c in _main.get_node("World").get_children():
+					if c is Projectile:
+						print("[runner] bullet at %s vel=%s" % [c.global_position, c.velocity])
+			if _frames - _frames_attack == 6:
+				_cap("18_pistol.png")
+			if _frames - _frames_attack > 40:
+				var d = _main.get_node("World/HitDummies/HitDummy01")
+				print("[runner] pistol: dummy01 hits +%d (expect 3), ammo=%s" % [d.hit_count - _dummy_hits0, _player.inventory.ammo])
+				_dummy_hits0 = d.hit_count
+				Input.action_press("quick_5")
+				_step = 27; _frames_attack = _frames
+		27:
+			Input.action_release("quick_5")
+			if _frames - _frames_attack == 4:
+				_cap("19_bomb.png")
+			if _frames - _frames_attack > 60:
+				var d = _main.get_node("World/HitDummies/HitDummy01")
+				print("[runner] bomb: dummy01 hits +%d (expect 1), bombs left=%d" % [d.hit_count - _dummy_hits0, _player.inventory.count("bomb")])
+				_dummy_hits0 = d.hit_count
+				Input.action_press("quick_3")
+				_step = 28; _frames_attack = _frames
+		28:
+			Input.action_release("quick_3")
+			if _frames - _frames_attack == 3:
+				Input.action_press("attack")
+			if _frames - _frames_attack == 20:
+				Input.action_release("attack")
+			if _frames - _frames_attack == 8:
+				_cap("18_rifle.png")
+			if _frames - _frames_attack > 50:
+				var d = _main.get_node("World/HitDummies/HitDummy01")
+				print("[runner] rifle auto: dummy01 hits +%d (expect >3), ammo=%s" % [d.hit_count - _dummy_hits0, _player.inventory.ammo])
+				Input.action_press("quick_4")
+				_step = 29; _frames_attack = _frames
+		29:
+			Input.action_release("quick_4")
+			if _frames - _frames_attack > 30:
+				print("[runner] dagger: daggers left=%d (expect 9)" % _player.inventory.count("dagger"))
+				_key(KEY_I)
+				_step = 33; _frames_attack = _frames
+		33:
+			# 인벤토리 창: 열림 + 일시정지 확인, 2번 항목(단검 아닌 것) 선택 후 5번 키로 퀵슬롯 등록
+			if _frames - _frames_attack == 3:
+				var w = _main.get_node("InventoryWindow")
+				print("[runner] inventory open=%s paused=%s" % [w.visible, _main.get_tree().paused])
+				w._list.select(0)   # 정렬된 첫 항목 = bomb
+				_key(KEY_1)
+			if _frames - _frames_attack == 5:
+				print("[runner] quick after assign: %s (expect bomb in slot 1, slot 5 empty)" % [_player.inventory.quick])
+				_cap("20_inventory.png")
+			if _frames - _frames_attack == 8:
+				_key(KEY_I)
+			if _frames - _frames_attack == 10:
+				print("[runner] inventory closed=%s paused=%s" % [not _main.get_node("InventoryWindow").visible, _main.get_tree().paused])
+				_player.inventory.set_quick(0, "sword"); _player.inventory.set_quick(4, "bomb")
+				_key(KEY_W)
+				_step = 34; _frames_attack = _frames
+		34:
+			if _frames - _frames_attack == 3:
+				var w = _main.get_node("EquipmentWindow")
+				print("[runner] equipment open=%s paused=%s" % [w.visible, _main.get_tree().paused])
+				_cap("21_equipment.png")
+				# 원거리 행의 '권총' 버튼 누르기
+				for b in w._rows["ranged"].get_children().slice(1):
+					if b.text.begins_with("권총"):
+						b.pressed.emit()
+			if _frames - _frames_attack == 5:
+				print("[runner] equipped after button: %s active=%s" % [_player.inventory.equipped, _player.inventory.active_weapon()])
+				_key(KEY_W)
+			if _frames - _frames_attack == 8:
+				print("[runner] equipment closed=%s paused=%s" % [not _main.get_node("EquipmentWindow").visible, _main.get_tree().paused])
+				_step = 40
+		40:
 			print("[runner] done, frames=%d" % _frames)
 			quit(0)
 			return true
@@ -231,6 +319,7 @@ func _process(_delta: float) -> bool:
 	return false
 
 var _frames_attack: int = 0
+var _dummy_hits0: int = 0
 var _view_cam: Camera3D
 var _anim_player: AnimationPlayer
 var _view_i: int = 0
@@ -246,6 +335,16 @@ func _drive_toward(to: Vector3) -> void:
 	elif sx < -0.2: Input.action_press("move_left")
 	if sy > 0.2: Input.action_press("move_up")
 	elif sy < -0.2: Input.action_press("move_down")
+
+## 실제 키 이벤트 (눌림+뗌) 를 디스패치한다 — _unhandled_input 기반 토글용
+func _key(code: Key) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventKey.new()
+		ev.keycode = code
+		ev.physical_keycode = code
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
+
 
 func _release_all() -> void:
 	for a in ["move_up", "move_down", "move_left", "move_right"]:

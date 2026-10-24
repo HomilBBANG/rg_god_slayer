@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/TestCourtyard.tscn" id="2_courtyard"]
@@ -9,6 +9,9 @@
 [ext_resource type="Script" path="res://scripts/light_shafts.gd" id="7_shafts"]
 [ext_resource type="Script" path="res://scripts/grass_field.gd" id="8_grass"]
 [ext_resource type="Texture2D" path="res://assets/environment/flower.png" id="9_flower"]
+[ext_resource type="Script" path="res://scripts/inventory.gd" id="10_inv"]
+[ext_resource type="Script" path="res://scripts/ui/inventory_window.gd" id="11_invwin"]
+[ext_resource type="Script" path="res://scripts/ui/equipment_window.gd" id="12_eqwin"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -35,6 +38,7 @@ dof_blur_near_enabled = false
 auto_exposure_enabled = false
 
 [node name="Main" type="Node"]
+process_mode = 3
 script = ExtResource("1_main")
 
 [node name="PixelCanvas" type="CanvasLayer" parent="."]
@@ -50,6 +54,7 @@ expand_mode = 1
 stretch_mode = 0
 
 [node name="World" type="SubViewport" parent="."]
+process_mode = 1
 own_world_3d = true
 handle_input_locally = false
 msaa_3d = 2
@@ -107,6 +112,15 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1, -9.5)
 
 [node name="CameraRig" parent="World" instance=ExtResource("5_rig")]
 target_path = NodePath("../Player")
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("10_inv")
+
+[node name="InventoryWindow" type="CanvasLayer" parent="."]
+script = ExtResource("11_invwin")
+
+[node name="EquipmentWindow" type="CanvasLayer" parent="."]
+script = ExtResource("12_eqwin")
 
 [node name="HUD" parent="." instance=ExtResource("6_hud")]
 layer = 1

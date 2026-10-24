@@ -10,6 +10,9 @@ extends Node
 @onready var player: PlayerController = $World/Player
 @onready var camera_rig: CameraFollow = $World/CameraRig
 @onready var light_shafts: LightShafts = $World/LightShafts
+@onready var inventory: Inventory = $Inventory
+@onready var inventory_window: InventoryWindow = $InventoryWindow
+@onready var equipment_window: EquipmentWindow = $EquipmentWindow
 
 ## F2로 순환하는 태양 프리셋: [고도각(도), 화면 기준 방위각(도, 0=화면 오른쪽, 90=화면 위), 에너지].
 ## 쿼터뷰에서 카메라에 보이는 면은 +X/+Z 면이므로, 태양을 화면 '오른쪽(약간 위)'에 두면
@@ -33,6 +36,7 @@ func _ready() -> void:
 	pixel_screen.position = _screen_base
 	pixel_screen.size = Vector2(world.size) * scale
 	pixel_screen.texture = world.get_texture()
+	player.inventory = inventory
 	_apply_light_preset(0)
 
 
@@ -41,6 +45,24 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("inventory"):
+		if inventory_window.visible:
+			inventory_window.close()
+		else:
+			equipment_window.close()
+			inventory_window.open(inventory)
+		return
+	if event.is_action_pressed("equipment"):
+		if equipment_window.visible:
+			equipment_window.close()
+		else:
+			inventory_window.close()
+			equipment_window.open(inventory)
+		return
+	if event.is_action_pressed("ui_cancel"):
+		inventory_window.close()
+		equipment_window.close()
+		return
 	if event.is_action_pressed("debug_light_cycle"):
 		_apply_light_preset((_light_index + 1) % light_presets.size())
 	elif event.is_action_pressed("debug_screenshot"):

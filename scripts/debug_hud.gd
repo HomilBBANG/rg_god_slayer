@@ -10,6 +10,7 @@ extends CanvasLayer
 @onready var _health_bar: ProgressBar = $Root/HealthBar
 @onready var _hint: Label = $Root/Hint
 @onready var _debug: Label = $Root/Debug
+@onready var _weapon: Label = $Root/Weapon
 
 var _player: PlayerController
 var _rig: CameraFollow
@@ -41,6 +42,8 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	# 디버그 켜져 있으면 안내도 계속 보여 준다
 	_hint.visible = debug_visible or _elapsed < hint_visible_seconds
+	if _player:
+		_weapon.text = _player.weapon_status_text()
 	if debug_visible:
 		_debug.text = _build_debug_text()
 

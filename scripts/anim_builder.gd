@@ -11,6 +11,8 @@ const WALK_CYCLE := 0.56   # 두 걸음 (초) — 보폭 ~0.85 m × 2 ≈ 1.7 m 
 const IDLE_CYCLE := 6.0
 const ATTACK_LEN := 0.30
 const DODGE_LEN := 0.40
+const SHOOT_LEN := 0.16
+const THROW_LEN := 0.30
 
 var _skel: Skeleton3D
 var _bones: Dictionary       # 논리 이름 → 뼈 인덱스
@@ -39,6 +41,8 @@ func build_library() -> AnimationLibrary:
 	lib.add_animation("Attack", _keyed("Attack", ATTACK_LEN, _attack_keys()))
 	lib.add_animation("DodgeFwd", _keyed("DodgeFwd", DODGE_LEN, _dodge_keys(1.0)))
 	lib.add_animation("DodgeBack", _keyed("DodgeBack", DODGE_LEN, _dodge_keys(-1.0)))
+	lib.add_animation("Shoot", _keyed("Shoot", SHOOT_LEN, _shoot_keys()))
+	lib.add_animation("Throw", _keyed("Throw", THROW_LEN, _throw_keys()))
 	return lib
 
 
@@ -147,6 +151,38 @@ func _attack_keys() -> Array:
 		"UpperLeg.L": Vector3(8, 0, -3), "UpperLeg.R": Vector3(-10, 0, 4), "LowerLeg.L": Vector3(-8, 0, 0), "LowerLeg.R": Vector3(-10, 0, 0),
 		"hips_pos": Vector3(0, -0.02, -0.02)}
 	return [[0.0, neutral], [0.07, windup], [0.16, strike], [0.22, settle], [ATTACK_LEN, neutral]]
+
+
+## 사격: 오른팔을 앞으로 뻗어 조준(왼팔은 받침), 반동으로 살짝 뒤로, 복귀
+func _shoot_keys() -> Array:
+	var aim := {"Spine": Vector3(-4, 12, 0), "Chest": Vector3(-2, 6, 0), "Head": Vector3(0, -8, 0),
+		"UpperArm.R": Vector3(88, 0, 4), "LowerArm.R": Vector3(6, 0, 0), "UpperArm.L": Vector3(60, 0, 22), "LowerArm.L": Vector3(45, 0, 0),
+		"UpperLeg.L": Vector3(6, 0, -3), "UpperLeg.R": Vector3(-8, 0, 3), "LowerLeg.L": Vector3(-6, 0, 0), "LowerLeg.R": Vector3(-8, 0, 0),
+		"hips_pos": Vector3(0, -0.015, 0)}
+	var recoil := aim.duplicate()
+	recoil["UpperArm.R"] = Vector3(96, 0, 4)
+	recoil["LowerArm.R"] = Vector3(18, 0, 0)
+	recoil["Spine"] = Vector3(2, 12, 0)
+	var settle := aim.duplicate()
+	settle["UpperArm.R"] = Vector3(80, 0, 4)
+	return [[0.0, aim], [0.03, recoil], [0.10, settle], [SHOOT_LEN, aim]]
+
+
+## 던지기: 뒤로 당겼다가 오버핸드로 앞으로
+func _throw_keys() -> Array:
+	var neutral := {"Spine": Vector3(-2, 0, 0), "Chest": Vector3(-1, 0, 0), "Head": Vector3(1, 0, 0),
+		"UpperArm.L": Vector3(2, 0, -4), "UpperArm.R": Vector3(2, 0, 4), "LowerArm.L": Vector3(10, 0, 0), "LowerArm.R": Vector3(10, 0, 0),
+		"UpperLeg.L": Vector3(0, 0, -1), "UpperLeg.R": Vector3(0, 0, 1), "LowerLeg.L": Vector3(-3, 0, 0), "LowerLeg.R": Vector3(-3, 0, 0),
+		"hips_pos": Vector3.ZERO}
+	var windup := {"Spine": Vector3(6, -22, 0), "Chest": Vector3(4, -10, 0), "Head": Vector3(0, 10, 0),
+		"UpperArm.L": Vector3(30, 0, -12), "UpperArm.R": Vector3(-70, 0, 60), "LowerArm.L": Vector3(20, 0, 0), "LowerArm.R": Vector3(100, 0, 0),
+		"UpperLeg.L": Vector3(12, 0, -5), "UpperLeg.R": Vector3(-12, 0, 6), "LowerLeg.L": Vector3(-10, 0, 0), "LowerLeg.R": Vector3(-14, 0, 0),
+		"hips_pos": Vector3(0, -0.02, 0.02)}
+	var release := {"Spine": Vector3(-16, 26, 0), "Chest": Vector3(-8, 10, 0), "Head": Vector3(-4, -8, 0),
+		"UpperArm.L": Vector3(-20, 0, -8), "UpperArm.R": Vector3(120, 0, 10), "LowerArm.L": Vector3(16, 0, 0), "LowerArm.R": Vector3(10, 0, 0),
+		"UpperLeg.L": Vector3(22, 0, -5), "UpperLeg.R": Vector3(-20, 0, 6), "LowerLeg.L": Vector3(-16, 0, 0), "LowerLeg.R": Vector3(-24, 0, 0),
+		"hips_pos": Vector3(0, -0.04, -0.05)}
+	return [[0.0, neutral], [0.08, windup], [0.17, release], [THROW_LEN, neutral]]
 
 
 ## 회피: 웅크림 → 몸 던지기(앞: 앞으로 숙이고 다리 뒤로 / 뒤: 뒤로 젖히고 다리 앞으로) → 착지 웅크림 → 복귀

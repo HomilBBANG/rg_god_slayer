@@ -19,5 +19,9 @@
 | 15_rig_check_front/side/back.png | Spine/Spine2/Head 를 살짝 돌린 Blender 검증 렌더 (스킨 변형 확인) |
 | 16_walk_cycle_side.png | Walk 사이클 옆모습 7프레임 (RED_ANIMVIEW 모드, 직교 카메라) |
 | 17_walk_cycle_front.png | Walk 사이클 3/4 정면 4프레임 |
+| 18_pistol.png / 18_rifle.png | 2 → 권총 단발 / 3 → 라이플 연사 (더미 01 피격, HUD 탄 수) |
+| 19_bomb.png | 5 → 폭탄 투척 직후 |
+| 20_inventory.png | I 인벤토리 창 — 폭탄을 선택해 1번 키로 슬롯 1 등록 (일시정지) |
+| 21_equipment.png | W 장비 창 — 근접/원거리 슬롯 버튼 |
 
 재생성: `godot --path game -s tools/capture_runner.gd` → `user://captures/`

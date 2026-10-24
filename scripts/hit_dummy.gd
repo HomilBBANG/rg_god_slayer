@@ -22,9 +22,9 @@ func _ready() -> void:
 
 
 ## 플레이어 공격이 닿았을 때 호출. from_dir = 공격자 → 더미 방향(수평).
-func receive_hit(from_dir: Vector3) -> void:
+func receive_hit(from_dir: Vector3, damage: int = 1) -> void:
 	hit_count += 1
-	hp -= 1
+	hp -= damage
 	if hp <= 0:
 		hp = max_hp
 	_refresh_label()
