@@ -44,6 +44,8 @@ func _process(delta: float) -> void:
 	_hint.visible = debug_visible or _elapsed < hint_visible_seconds
 	if _player:
 		_weapon.text = _player.weapon_status_text()
+		_health_bar.max_value = PlayerController.MAX_HP
+		_health_bar.value = _player.hp
 	if debug_visible:
 		_debug.text = _build_debug_text()
 

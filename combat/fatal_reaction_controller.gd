@@ -8,7 +8,7 @@ signal decision_opened(pattern: BossAttackPattern)
 signal resolved(pattern: BossAttackPattern, success: bool, action: StringName, reaction_ms: float, reason: String)
 signal finished(pattern: BossAttackPattern)
 
-enum Phase { NONE, FOCUS, DECISION, RESOLVE, RECOVER }
+enum Phase { NONE, FOCUS, DECISION, RESOLVE, HOLD, RECOVER }
 
 ## 복귀 시간 (현실 초) — GDD 0.16~0.22
 @export var recover_real_seconds: float = 0.18
@@ -22,6 +22,8 @@ var player: PlayerController
 var camera: CombatCameraDirector
 var camera_rig: CameraFollow
 var resolver: BossHitResolver
+## 스킬: 순발력(판단 창), 판단력(슬로모션 유지)
+var skills: PlayerSkills
 
 var pattern_instance_id: int = 0
 var decision_started_us: int = 0
@@ -30,6 +32,7 @@ var last_action: StringName = &""
 var last_reaction_ms: float = -1.0
 var last_result: String = ""
 var _phase_start_us: int = 0
+var _focus_start_us: int = 0
 var _hitstop_until_us: int = 0
 var _recover_from_scale: float = 1.0
 
@@ -49,6 +52,7 @@ func begin(p: BossAttackPattern, b: BossController) -> void:
 	last_result = ""
 	phase = Phase.FOCUS
 	_phase_start_us = CombatClock.now_us()
+	_focus_start_us = _phase_start_us
 	Engine.time_scale = p.time_scale
 	camera.focus(p.zoom_size, p.focus_real_seconds)
 	player.begin_fatal()
@@ -62,6 +66,12 @@ func _process(_delta: float) -> void:
 				_open_decision()
 		Phase.DECISION:
 			check_decision_timeout()
+		Phase.HOLD:
+			# 판단력: 성공 뒤에도 슬로모션을 slow_seconds (포커스 시작 기준) 까지 유지
+			if now < _hitstop_until_us:
+				return
+			if now - _focus_start_us >= int(slow_seconds() * 1_000_000.0):
+				_start_recover()
 		Phase.RECOVER:
 			if now < _hitstop_until_us:
 				return
@@ -87,7 +97,7 @@ func on_new_action(action: StringName, usec: int) -> void:
 	if phase != Phase.DECISION or decision_resolved:
 		return
 	var elapsed := usec - decision_started_us
-	var limit := int(pattern.decision_real_seconds * 1_000_000.0)
+	var limit := int(decision_seconds() * 1_000_000.0)
 	if elapsed < 0 or elapsed > limit:
 		return   # 타임아웃 검사가 처리
 	decision_resolved = true
@@ -102,7 +112,7 @@ func on_new_action(action: StringName, usec: int) -> void:
 func check_decision_timeout() -> void:
 	if phase == Phase.DECISION and not decision_resolved:
 		var elapsed := CombatClock.now_us() - decision_started_us
-		if elapsed > int(pattern.decision_real_seconds * 1_000_000.0):
+		if elapsed > int(decision_seconds() * 1_000_000.0):
 			decision_resolved = true
 			last_action = &""
 			last_reaction_ms = float(elapsed) / 1000.0
@@ -113,7 +123,18 @@ func check_decision_timeout() -> void:
 func remaining_ms() -> float:
 	if phase != Phase.DECISION:
 		return -1.0
-	return maxf(0.0, pattern.decision_real_seconds * 1000.0 - float(CombatClock.now_us() - decision_started_us) / 1000.0)
+	return maxf(0.0, decision_seconds() * 1000.0 - float(CombatClock.now_us() - decision_started_us) / 1000.0)
+
+
+## 판단 창 길이 (현실 초): 패턴 기본값 + 순발력 보너스
+func decision_seconds() -> float:
+	var bonus := (skills.decision_seconds() - PlayerSkills.DECISION_BASE) if skills else 0.0
+	return pattern.decision_real_seconds + bonus
+
+
+## 슬로모션 유지 (현실 초, 포커스 시작부터): 판단력
+func slow_seconds() -> float:
+	return skills.slow_seconds() if skills else PlayerSkills.SLOW_BASE
 
 
 func _resolve_success(action: StringName) -> void:
@@ -130,7 +151,7 @@ func _resolve_success(action: StringName) -> void:
 		boss.fatal_strike(true)
 		_hitstop_until_us = 0
 	resolved.emit(pattern, true, action, last_reaction_ms, last_result)
-	_start_recover()
+	phase = Phase.HOLD
 
 
 func _resolve_death(reason: String) -> void:
@@ -162,7 +183,7 @@ func is_active() -> bool:
 
 
 func phase_name() -> String:
-	return ["NONE", "FATAL_FOCUS", "FATAL_DECISION", "FATAL_RESOLVE", "FATAL_RECOVER"][phase]
+	return ["NONE", "FATAL_FOCUS", "FATAL_DECISION", "FATAL_RESOLVE", "FATAL_SLOW_HOLD", "FATAL_RECOVER"][phase]
 
 
 ## 화면 방향 이름 → 월드 XZ 단위 벡터 (최초 일반 카메라의 고정 화면 방향, 카메라 회전 없음)

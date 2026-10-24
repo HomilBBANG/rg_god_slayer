@@ -60,8 +60,12 @@ var move_input: Vector2 = Vector2.ZERO
 var inventory: Inventory
 ## 보스 전투 (BossTestArena 에서만 설정)
 var combat_director: CombatDirector
-## 타격 프레임 무적 (시네마틱 회피 성공 시)
+## 타격 프레임 무적 (시네마틱 회피 성공 시) / 피격 직후 짧은 무적
 var invulnerable: bool = false
+## 체력 (테스트용: 일반 공격 1회 = 1/3). 치명적 공격은 HP 와 무관하게 즉사
+const MAX_HP := 3
+var hp: int = MAX_HP
+var _hurt_invuln: float = 0.0
 
 var _combo_index: int = 0
 var _combo_buffered: bool = false
@@ -214,6 +218,10 @@ func _physics_process(delta: float) -> void:
 	_fire_cd = maxf(0.0, _fire_cd - delta)
 	_throw_cd = maxf(0.0, _throw_cd - delta)
 	_oneshot_left = maxf(0.0, _oneshot_left - delta)
+	if _hurt_invuln > 0.0:
+		_hurt_invuln -= delta
+		if _hurt_invuln <= 0.0 and state != State.SCRIPTED:
+			invulnerable = false
 	_update_reload(delta)
 
 	# ---- 전투 특수 상태: 입력을 받지 않는다 (치명적 판단은 FatalReactionController 가 처리)
@@ -241,6 +249,7 @@ func _physics_process(delta: float) -> void:
 			if _scripted_time >= _scripted_len:
 				invulnerable = false
 				state = State.IDLE
+				DustPuff.spawn(get_parent(), global_position, 1.2)
 			return
 		State.PARRY:
 			_parry_time += delta
@@ -284,6 +293,7 @@ func _physics_process(delta: float) -> void:
 			if _dodge_time >= dodge_duration and (is_on_floor() or _dodge_time > dodge_duration * 2.0):
 				state = State.IDLE
 				_dodge_cd = dodge_cooldown
+				DustPuff.spawn(get_parent(), global_position)
 	if state != State.ATTACK and state != State.DODGE:
 		state = State.WALK if wish_dir.length_squared() > 0.0 else State.IDLE
 		if state == State.WALK:
@@ -420,6 +430,18 @@ func scripted_parry() -> void:
 	_play("Parry", 1.0, true)
 
 
+## 일반 공격 피격: HP 1 감소, 짧은 무적 + 휘청. 0 이 되면 사망 (호출자가 die 처리)
+func take_normal_hit(from_dir: Vector3) -> void:
+	hp = maxi(0, hp - 1)
+	_hurt_invuln = 0.6
+	invulnerable = true
+	velocity = from_dir * 4.0
+	if state == State.ATTACK or state == State.IDLE or state == State.WALK:
+		state = State.PARRY   # 짧은 경직으로 재사용 (0.35 s)
+		_parry_time = 0.12    # 패링 활성창은 지나간 상태
+		_play("DodgeBack", 1.4, true)
+
+
 func die() -> void:
 	state = State.DEAD
 	invulnerable = false
@@ -442,6 +464,8 @@ func reset_for_retry(pos: Vector3, face: Vector3) -> void:
 	facing = face.normalized()
 	state = State.IDLE
 	invulnerable = false
+	hp = MAX_HP
+	_hurt_invuln = 0.0
 	_combo_index = 0
 	_combo_buffered = false
 	_attack_time = 0.0

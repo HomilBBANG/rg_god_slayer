@@ -99,21 +99,30 @@ func _build_visual() -> void:
 	_arm_l.position = Vector3(-0.85, 1.35, 0)
 	_torso.add_child(_arm_l)
 	_box(_arm_l, "UpperL", Vector3(0.36, 1.2, 0.36), Vector3(0, -0.6, 0), MAT_BODY)
+	# 은색 반짝임: 밝은 구 + 십자 스파이크, 예고 중 맥동 (패링 가능 패턴에만)
 	var g := MeshInstance3D.new()
 	var sm := SphereMesh.new()
-	sm.radius = 0.16
-	sm.height = 0.32
+	sm.radius = 0.22
+	sm.height = 0.44
 	sm.radial_segments = 10
 	sm.rings = 5
 	g.mesh = sm
 	var gm := StandardMaterial3D.new()
 	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	gm.albedo_color = Color(0.93, 0.95, 1.0)
+	gm.albedo_color = Color(0.97, 0.98, 1.0)
 	g.material_override = gm
 	g.position = Vector3(0, -3.55, 0)
 	g.visible = false
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_arm_r.add_child(g)
+	for axis in [Vector3(1.6, 0.07, 0.07), Vector3(0.07, 1.6, 0.07), Vector3(0.07, 0.07, 1.6)]:
+		var spike := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = axis
+		spike.mesh = bm
+		spike.material_override = gm
+		spike.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		g.add_child(spike)
 	_glint = g
 
 
@@ -208,8 +217,11 @@ func _physics_process(delta: float) -> void:
 					fatal.begin(pattern, self)
 				else:
 					_begin_active()
-			elif pattern.visual_cue == "silver_glint" and _t >= pattern.telegraph_game_seconds * 0.55:
+			elif pattern.visual_cue == "silver_glint" and _t >= pattern.telegraph_game_seconds * 0.35:
 				_glint.visible = true
+				var k := (_t / pattern.telegraph_game_seconds - 0.35) / 0.65
+				_glint.scale = Vector3.ONE * (0.8 + 0.9 * absf(sin(k * PI * 3.0)))
+				_glint.rotation.y += delta * 9.0
 		State.ACTIVE, State.ACTIVE2:
 			_step_move(delta)
 			if not _hit_done and not pattern.is_fatal():

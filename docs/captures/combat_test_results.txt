@@ -1,52 +1,29 @@
-fps≈4..53 max_fps=0 pixel_scale=9
+fps≈9..47 max_fps=0 pixel_scale=9
 PASS | F01 decision opens (focus→decision) | time_scale=0.18 size=9.5
 PASS | F01 slow-motion & zoom during decision | time_scale=0.18 size=9.50
-PASS | F01 → within window = dodge success | injected @125 ms, judged 142.3 ms
+PASS | F01 → within window = dodge success | injected @126 ms, judged 145.8 ms
 PASS | after success: time_scale 1.0, camera size 15 | ts=1.00 size=15.00
-PASS | F01 → after 200 ms = death (timeout) | injected @232 ms, reason=F01 timeout
+PASS | F01 → after 200 ms = death (timeout) | injected @248 ms, reason=F01 timeout
 PASS | death: time_scale 1.0 & camera reset | 
-PASS | F01 ← (wrong direction) = death | @72 ms fail_wrong_action(DODGE_LEFT)
-PASS | F01 X (not parryable) = death | @71 ms fail_wrong_action(PARRY_X)
-PASS | F04 X = parry success | @147 ms judged 164.8 ms boss=STAGGER parry_count=1
+PASS | F01 ← (wrong direction) = death | @70 ms fail_wrong_action(DODGE_LEFT)
+PASS | F01 X (not parryable) = death | @64 ms fail_wrong_action(PARRY_X)
+PASS | F04 X = parry success | @143 ms judged 162.1 ms boss=STAGGER parry_count=1
 PASS | F04 parry → boss STAGGER | STAGGER
-PASS | F04 ↑ (parry-only) = death | @62 ms
-PASS | F05 ↓ = dodge success | @80 ms
-PASS | F05 X = parry success | @69 ms
+PASS | F04 ↑ (parry-only) = death | @73 ms
+PASS | F05 ↓ = dodge success | @74 ms
+PASS | F05 X = parry success | @67 ms
 PASS | F04 X held before window = no auto success (timeout death) | fail_timeout
 PASS | Z combo interrupted by FATAL; → still works | player during decision = FATAL_DECISION
 PASS | Z 3-hit combo: boss hp 12 → 8 (1+1+2) | hp 12 → 8
 PASS | boundary: → at 199 ms = success | 199.0 ms
 PASS | boundary: → at 201 ms = ignored → timeout death | fail_timeout
 PASS | first input decides: ← then → = death (no second chance) | fail_wrong_action(DODGE_LEFT)
-PASS | R retry resets (alive, ts 1, size 15, positions) | retry 41 ms, player (0.0, 0.000073, 4.0)
-PASS | N01 hit = instant death | N01 active
-PASS | N01 avoided by moving out of range | player (2.088323, 0.000591, 0.488322)
-PASS | F01 skipped when → destination blocked by wall | F01: RIGHT destination blocked: obstacle on path (WallEast)
-PASS | 30 fatal cycles: camera/time_scale restored every time | bad=0
-
---- RED_FPS_CAP=30 재검 ---
-fps≈2..30 max_fps=30 pixel_scale=9
-PASS | F01 decision opens (focus→decision) | time_scale=0.18 size=9.5
-PASS | F01 slow-motion & zoom during decision | time_scale=0.18 size=9.50
-PASS | F01 → within window = dodge success | injected @133 ms, judged 165.6 ms
-PASS | after success: time_scale 1.0, camera size 15 | ts=1.00 size=15.00
-PASS | F01 → after 200 ms = death (timeout) | injected @233 ms, reason=F01 timeout
-PASS | death: time_scale 1.0 & camera reset | 
-PASS | F01 ← (wrong direction) = death | @67 ms fail_wrong_action(DODGE_LEFT)
-PASS | F01 X (not parryable) = death | @66 ms fail_wrong_action(PARRY_X)
-PASS | F04 X = parry success | @133 ms judged 166.0 ms boss=STAGGER parry_count=1
-PASS | F04 parry → boss STAGGER | STAGGER
-PASS | F04 ↑ (parry-only) = death | @67 ms
-PASS | F05 ↓ = dodge success | @66 ms
-PASS | F05 X = parry success | @66 ms
-PASS | F04 X held before window = no auto success (timeout death) | fail_timeout
-PASS | Z combo interrupted by FATAL; → still works | player during decision = FATAL_DECISION
-PASS | Z 3-hit combo: boss hp 12 → 8 (1+1+2) | hp 12 → 8
-PASS | boundary: → at 199 ms = success | 199.0 ms
-PASS | boundary: → at 201 ms = ignored → timeout death | fail_timeout
-PASS | first input decides: ← then → = death (no second chance) | fail_wrong_action(DODGE_LEFT)
-PASS | R retry resets (alive, ts 1, size 15, positions) | retry 67 ms, player (0.0, 0.000073, 4.0)
-PASS | N01 hit = instant death | N01 active
-PASS | N01 avoided by moving out of range | player (2.043539, 0.000556, 0.443539)
+PASS | R retry resets (alive, ts 1, size 15, positions) | retry 38 ms, player (0.0, 0.000073, 4.0)
+PASS | N01 hit = HP 3 → 2 (alive) | hp=2 state=PARRY 0.14
+PASS | three N01 hits = death | hp=0 N01 active
+PASS | reflex 5: → at ~400 ms still succeeds (window 0.50 s) | @393 ms judged 410.8 ms
+PASS | judgement 2: slow-motion held ~3 s after success | held 2482 ms more
+PASS | K opens skill window (paused) | 
+PASS | N01 avoided by moving out of range | player (1.998756, 0.000799, 0.398755)
 PASS | F01 skipped when → destination blocked by wall | F01: RIGHT destination blocked: obstacle on path (WallEast)
 PASS | 30 fatal cycles: camera/time_scale restored every time | bad=0

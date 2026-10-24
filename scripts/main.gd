@@ -13,6 +13,8 @@ extends Node
 @onready var inventory: Inventory = $Inventory
 @onready var inventory_window: InventoryWindow = $InventoryWindow
 @onready var equipment_window: EquipmentWindow = $EquipmentWindow
+@onready var skill_window: SkillWindow = get_node_or_null("SkillWindow")
+@onready var skills: PlayerSkills = get_node_or_null("Skills")
 
 ## F2로 순환하는 태양 프리셋: [고도각(도), 화면 기준 방위각(도, 0=화면 오른쪽, 90=화면 위), 에너지].
 ## 쿼터뷰에서 카메라에 보이는 면은 +X/+Z 면이므로, 태양을 화면 '오른쪽(약간 위)'에 두면
@@ -66,13 +68,23 @@ func _menus_allowed() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if (event.is_action_pressed("inventory") or event.is_action_pressed("equipment")) and not _menus_allowed():
+	if (event.is_action_pressed("inventory") or event.is_action_pressed("equipment") or event.is_action_pressed("skills")) and not _menus_allowed():
+		return
+	if event.is_action_pressed("skills") and skill_window and skills:
+		if skill_window.visible:
+			skill_window.close()
+		else:
+			inventory_window.close()
+			equipment_window.close()
+			skill_window.open(skills)
 		return
 	if event.is_action_pressed("inventory"):
 		if inventory_window.visible:
 			inventory_window.close()
 		else:
 			equipment_window.close()
+			if skill_window:
+				skill_window.close()
 			inventory_window.open(inventory)
 		return
 	if event.is_action_pressed("equipment"):
@@ -80,11 +92,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			equipment_window.close()
 		else:
 			inventory_window.close()
+			if skill_window:
+				skill_window.close()
 			equipment_window.open(inventory)
 		return
 	if event.is_action_pressed("ui_cancel"):
 		inventory_window.close()
 		equipment_window.close()
+		if skill_window:
+			skill_window.close()
 		return
 	if event.is_action_pressed("debug_light_cycle"):
 		_apply_light_preset((_light_index + 1) % light_presets.size())

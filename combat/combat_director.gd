@@ -16,6 +16,8 @@ enum BattleState { IDLE, APPROACH, COMBAT, VICTORY, DEAD }
 @export var auto_sequence: bool = true
 @export var player_start: Vector3 = Vector3(0, 0.3, 4.0)
 @export var log_path: String = "user://reaction_log.csv"
+## 개발용: 치명적 판단 창에 정답 키(방향/X)를 화면에 표시
+@export var show_fatal_hint: bool = true
 
 var state: BattleState = BattleState.IDLE
 var boss: BossController
@@ -26,6 +28,7 @@ var resolver: BossHitResolver
 var camera: CombatCameraDirector
 var router: CombatInputRouter
 var result_ui: BattleResultController
+var skills: PlayerSkills
 
 var patterns: Dictionary = {}
 var sequence: Array = []
@@ -62,6 +65,11 @@ func _ready() -> void:
 	fatal.camera = camera
 	fatal.camera_rig = camera_rig
 	fatal.resolver = resolver
+	skills = get_node_or_null("../../Skills") as PlayerSkills
+	if skills == null:
+		skills = PlayerSkills.new()
+		add_child(skills)
+	fatal.skills = skills
 	add_child(fatal)
 	# 입력 라우터는 루트 뷰포트에 둔다 (World 는 SubViewport 라 _input 이 오지 않는다)
 	router = CombatInputRouter.new()

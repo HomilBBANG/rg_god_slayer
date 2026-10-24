@@ -17,11 +17,17 @@ func boss_hit_player(pattern: BossAttackPattern, boss: BossController, reason: S
 		boss.on_parried()
 		director.log_event(pattern.id, "PARRY_X", 0, "parry_normal")
 		return false
-	director.player_died("%s %s" % [pattern.id, reason])
+	# 일반 공격: 체력 1/3 감소 (테스트용). 0 이면 사망
+	var dir := player.global_position - boss.global_position
+	dir.y = 0.0
+	player.take_normal_hit(dir.normalized())
+	director.log_event(pattern.id, "", 0, "hit: player hp %d/%d" % [player.hp, PlayerController.MAX_HP])
+	if player.hp <= 0:
+		director.player_died("%s %s" % [pattern.id, reason])
 	return true
 
 
-## 치명적 패턴 실패 — 공격이 명중한다
+## 치명적 패턴 실패 — HP 와 무관하게 반드시 사망 — 공격이 명중한다
 func kill_player(pattern: BossAttackPattern, reason: String) -> void:
 	if director == null or director.state != CombatDirector.BattleState.COMBAT:
 		return

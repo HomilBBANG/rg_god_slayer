@@ -28,6 +28,7 @@
 | 24_death.png | 창 만료 사망 화면 (사유, 반응 ms, R 안내) |
 | 25_f04_decision.png | F04 판단 창 — 은색 반짝임, 패링 전용 |
 | 26_n01_windup.png | N01 예고 — 전방 부채꼴 위험 영역 |
+| 27_skills.png | K 스킬 창 (순발력/판단력) |
 | combat_demo.mp4 | F01 회피 → F04 패링 → N01 피격 사망 (테스트 러너 프레임 녹화, RED_PIXEL_SCALE=3) |
 | combat_test_results.txt | 자동 검증 결과 (GDD §14) |
 

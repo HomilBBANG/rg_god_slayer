@@ -13,6 +13,7 @@ var _edges: Dictionary = {}
 var _parry_hint: Label
 var _flash: ColorRect
 var _flash_until_us: int = 0
+var _hint: Label   # 개발용 정답 키 표시 (director.show_fatal_hint)
 
 
 func _ready() -> void:
@@ -52,6 +53,16 @@ func _ready() -> void:
 	_parry_hint.position = Vector2(940, 20)
 	_parry_hint.visible = false
 	add_child(_parry_hint)
+	_hint = Label.new()
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.add_theme_font_size_override("font_size", 96)
+	_hint.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7, 0.95))
+	_hint.add_theme_color_override("font_outline_color", Color(0.1, 0.08, 0.08, 0.9))
+	_hint.add_theme_constant_override("outline_size", 10)
+	_hint.position = Vector2(760, 150)
+	_hint.size = Vector2(400, 120)
+	_hint.visible = false
+	add_child(_hint)
 	_flash = ColorRect.new()
 	_flash.color = Color(1, 1, 1, 0.0)
 	_flash.size = Vector2(1920, 1080)
@@ -92,6 +103,13 @@ func _process(_delta: float) -> void:
 	for d in _edges:
 		_edges[d].visible = visible and in_decision and f.pattern and f.pattern.screen_safe_directions.has(d)
 	_parry_hint.visible = visible and in_decision and f.pattern and f.pattern.parryable
+	# 개발용 정답 키: 판단 창 동안 큰 글자 (오버레이 표시 여부와 무관, director.show_fatal_hint)
+	_hint.visible = director.show_fatal_hint and in_decision
+	if _hint.visible:
+		var parts: PackedStringArray = []
+		for a in f.pattern.allowed_actions:
+			parts.append({"DODGE_UP": "↑", "DODGE_DOWN": "↓", "DODGE_LEFT": "←", "DODGE_RIGHT": "→", "PARRY_X": "X"}.get(String(a), String(a)))
+		_hint.text = "  /  ".join(parts)
 	if not visible:
 		return
 	var lines: PackedStringArray = []
@@ -105,7 +123,8 @@ func _process(_delta: float) -> void:
 	else:
 		lines.append("pattern -")
 	var rem := f.remaining_ms()
-	lines.append("fatal %s   remaining %s" % [f.phase_name(), ("%.0f ms" % rem) if rem >= 0.0 else "-"])
+	lines.append("fatal %s   remaining %s   window %.2f s  slow %.1f s  (순발력 %d 판단력 %d)" % [f.phase_name(), ("%.0f ms" % rem) if rem >= 0.0 else "-", f.pattern.decision_real_seconds + (director.skills.decision_seconds() - PlayerSkills.DECISION_BASE) if f.pattern else director.skills.decision_seconds(), director.skills.slow_seconds(), director.skills.reflex, director.skills.judgement])
+	lines.append("player HP %d/%d" % [director.player.hp, PlayerController.MAX_HP])
 	lines.append("last input %s   %s   %s" % [f.last_action if f.last_action != &"" else "-", ("%.1f ms" % f.last_reaction_ms) if f.last_reaction_ms >= 0.0 else "-", f.last_result if f.last_result != "" else "-"])
 	var sel := director.selected_pattern()
 	lines.append("[F3] %s   [F4/F6] select: %s   [F5] fire   [R] retry   seq %d/%d" % ["AUTO" if director.auto_sequence else "MANUAL", sel.id if sel else "-", director.seq_index, director.sequence.size()])

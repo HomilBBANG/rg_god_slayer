@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/boss_arena.gd" id="2_arena"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://combat/combat_director.gd" id="13_director"]
 [ext_resource type="Script" path="res://combat/attack_debug_overlay.gd" id="14_overlay"]
 [ext_resource type="Script" path="res://combat/battle_result_controller.gd" id="15_result"]
+[ext_resource type="Script" path="res://scripts/player_skills.gd" id="16_skills"]
+[ext_resource type="Script" path="res://scripts/ui/skill_window.gd" id="17_skillwin"]
 
 [ext_resource type="PackedScene" path="res://scenes/CameraRig.tscn" id="5_rig"]
 [ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="6_hud"]
@@ -140,6 +142,12 @@ script = ExtResource("11_invwin")
 
 [node name="EquipmentWindow" type="CanvasLayer" parent="."]
 script = ExtResource("12_eqwin")
+
+[node name="Skills" type="Node" parent="."]
+script = ExtResource("16_skills")
+
+[node name="SkillWindow" type="CanvasLayer" parent="."]
+script = ExtResource("17_skillwin")
 
 [node name="BattleResult" type="CanvasLayer" parent="."]
 script = ExtResource("15_result")

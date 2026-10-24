@@ -265,8 +265,36 @@ func _run() -> void:
 	director.fire_pattern("N01")
 	await _until(func(): return boss.state == BossController.State.WINDUP, 4.0)
 	_cap("26_n01_windup.png")
-	await _until(func(): return _is_dead(), 3.0)
-	_check("N01 hit = instant death", _is_dead() and director.death_reason.begins_with("N01"), director.death_reason)
+	await _until(func(): return player.hp < PlayerController.MAX_HP, 3.0)
+	_check("N01 hit = HP 3 → 2 (alive)", player.hp == 2 and not _is_dead(), "hp=%d state=%s" % [player.hp, player.state_name()])
+	for i in 2:
+		await _until(func(): return boss.state == BossController.State.IDLE, 4.0)
+		player.global_position = near
+		director.fire_pattern("N01")
+		await _until(func(): return _is_dead() or (boss.state == BossController.State.RECOVERY), 4.0)
+	_check("three N01 hits = death", _is_dead() and director.death_reason.begins_with("N01"), "hp=%d %s" % [player.hp, director.death_reason])
+	# 스킬: 순발력 5 → 판단 창 0.50 s (→ 를 400 ms 에 눌러도 성공), 판단력 2 → 슬로모션 3 s 유지
+	await _setup(near)
+	director.skills.set_reflex(5)
+	director.skills.set_judgement(2)
+	ok = await _fire_wait_decision("F01")
+	at = await _inject_after(380.0, KEY_RIGHT)
+	await _frames(2)
+	var hold_ok := fatal.phase == FatalReactionController.Phase.HOLD and absf(Engine.time_scale - 0.18) < 0.01
+	_check("reflex 5: → at ~400 ms still succeeds (window 0.50 s)", fatal.last_result == "success_dodge" and not _is_dead(), "@%.0f ms judged %.1f ms" % [at, fatal.last_reaction_ms])
+	var t_hold := Time.get_ticks_usec()
+	await _until(func(): return fatal.phase != FatalReactionController.Phase.HOLD, 6.0)
+	var held := float(Time.get_ticks_usec() - t_hold) / 1000.0
+	_check("judgement 2: slow-motion held ~3 s after success", hold_ok and held > 2000.0 and held < 3300.0, "held %.0f ms more" % held)
+	await _wait_fatal_done()
+	director.skills.set_reflex(0)
+	director.skills.set_judgement(0)
+	_key(KEY_K)
+	await _frames(2)
+	var sw = main.get_node("SkillWindow")
+	_check("K opens skill window (paused)", sw.visible and main.get_tree().paused, "")
+	_key(KEY_K)
+	await _frames(2)
 	await _setup(near)
 	director.fire_pattern("N01")
 	await _until(func(): return boss.state == BossController.State.WINDUP, 4.0)
@@ -349,7 +377,13 @@ func _captures() -> void:
 	await _frames(8)
 	_cap("26_n01_windup.png")
 	await _until(func(): return _is_dead(), 6.0)
-	# 영상: F01 회피 → F04 패링 → N02 돌진 회피 → N01 피격 사망 → R 재도전
+	# 스킬 창
+	_key(KEY_K)
+	await _frames(2)
+	_cap("27_skills.png")
+	_key(KEY_K)
+	await _frames(2)
+	# 영상: F01 회피 → F04 패링 → N01 피격 → R 재도전
 	DirAccess.make_dir_recursive_absolute("user://video")
 	await _setup(Vector3(0, 0.3, -1.0))
 	_video_on = true
